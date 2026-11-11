@@ -130,24 +130,24 @@ current.
 
 ## 6. Auth screens
 
-- [ ] Build `/signup` with Mantine inputs + `react-hook-form` and
+- [x] Build `/signup` with Mantine inputs + `react-hook-form` and
       `zodResolver(signUpInputSchema)`; fields: email, name, password,
       confirm password; show field errors and server 400/409 errors.
-- [ ] Build `/signin` with email/password; generic 401 error; disable submit while
+- [x] Build `/signin` with email/password; generic 401 error; disable submit while
       pending; link to `/forgot-password`; success calls `resetAuthState` and the
       `_auth` guard goes to `?redirect=` or `/app`.
-- [ ] Build `/forgot-password` with email and a generic “if an account exists”
+- [x] Build `/forgot-password` with email and a generic “if an account exists”
       success state.
-- [ ] Build `/reset-password` reading `token` from the query string, with password +
+- [x] Build `/reset-password` reading `token` from the query string, with password +
       confirmation, missing/invalid-link handling, and success calling
       `resetAuthState` so the guard goes to `/app` (the API signs the user in).
-- [ ] Build `/app` with the exact text `Welcome to the application.`, user details,
+- [x] Build `/app` with the exact text `Welcome to the application.`, user details,
       and logout.
-- [ ] Logout calls `/auth/sign-out`, then `resetAuthState` (clears the query cache
+- [x] Logout calls `/auth/sign-out`, then `resetAuthState` (clears the query cache
       and re-runs guards, which redirect to `/signin`).
-- [ ] Verify no auth token is written to `localStorage`/`sessionStorage`; the cookie
+- [x] Verify no auth token is written to `localStorage`/`sessionStorage`; the cookie
       is httpOnly.
-- [ ] Verify forms work with keyboard and visible labels; add a password visibility
+- [x] Verify forms work with keyboard and visible labels; add a password visibility
       toggle if straightforward.
 
 ## 7. Verification and delivery

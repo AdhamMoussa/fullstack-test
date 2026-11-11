@@ -8,3 +8,7 @@ const internalPathSchema = z
 export const authSearchSchema = z.object({
   redirect: internalPathSchema.optional().catch(undefined),
 })
+
+export const resetPasswordSearchSchema = z.object({
+  token: z.string().trim().min(1).optional().catch(undefined),
+})

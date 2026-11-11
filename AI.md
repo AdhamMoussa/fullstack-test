@@ -23,6 +23,9 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
 - The auth/users e2e suite and its cookie/in-memory-mail test harness.
 - The web foundation: Mantine/Query/Router providers, the Axios auth client,
   auth query/guard helpers, file-based routes, and the modular web structure.
+- The auth screens: signup/signin/forgot/reset forms with the contract schemas and
+  mutation hooks, server-error mapping onto the form fields, and the `/app` page
+  with user details and logout.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.

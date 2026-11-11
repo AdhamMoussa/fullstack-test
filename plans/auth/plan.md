@@ -68,8 +68,12 @@ React forms.
 - `apps/web` has the foundation in place: Mantine providers, one `QueryClient`,
   TanStack Router file-based routes, the credentialed Axios client, `/users/me` query
   keys and API helpers, and `beforeLoad` auth guards on the `_app`/`_auth` layout
-  routes with a router pending view. Screens are placeholders until Task #6.
-- Task #5 (web foundation) is complete; the auth screens are next.
+  routes with a router pending view. Task #6 replaced the placeholder screens with
+  the signup, signin, forgot-password, reset-password, and `/app` pages, all driven by
+  the contract schemas, the mutation hooks in
+  `src/modules/auth/queries/auth-mutations.ts`, and guard-driven redirects.
+- Task #5 (web foundation) and Task #6 (auth screens) are complete; browser
+  verification and delivery (Task #7) are next.
 - Docker Compose runs `mongo`, `db`, `contract`, `api`, and `web`; all ports are
   loopback-only. `db` pushes the schema to both the dev and test databases.
 - Root scripts run through the `api`/`db` containers; Oxlint is the linter and

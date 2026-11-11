@@ -1,4 +1,11 @@
-import type { AuthResponse, User, SignInInput } from '@repo/contract'
+import type {
+  AuthResponse,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+  SignInInput,
+  SignUpInput,
+  User,
+} from '@repo/contract'
 
 import { api } from '../../core/lib/api'
 
@@ -14,8 +21,31 @@ export async function fetchCurrentUser(): Promise<User | null> {
   return response.status === 401 ? null : response.data
 }
 
+export async function signUp(registration: SignUpInput): Promise<User> {
+  const response = await api.post<AuthResponse>('/auth/signup', registration)
+
+  return response.data.user
+}
+
 export async function signIn(credentials: SignInInput): Promise<User> {
   const response = await api.post<AuthResponse>('/auth/signin', credentials)
+
+  return response.data.user
+}
+
+export async function requestPasswordReset(
+  request: ForgotPasswordInput,
+): Promise<void> {
+  await api.post('/auth/forgot-password', request)
+}
+
+export async function resetPassword(
+  passwordReset: ResetPasswordInput,
+): Promise<User> {
+  const response = await api.post<AuthResponse>(
+    '/auth/reset-password',
+    passwordReset,
+  )
 
   return response.data.user
 }
