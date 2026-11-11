@@ -3,9 +3,9 @@ services:
     image: mongo:8.0
     hostname: mongo
     restart: unless-stopped
-    command: ["--replSet", "rs0", "--bind_ip_all"]
+    command: ['--replSet', 'rs0', '--bind_ip_all']
     ports:
-      - "127.0.0.1:27017:27017"
+      - '127.0.0.1:27017:27017'
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -33,11 +33,11 @@ services:
       mongo:
         condition: service_healthy
     environment:
-      MONGODB_URI: "mongodb://mongo:27017/assessment?replicaSet=rs0"
-      MONGODB_TEST_URI: "mongodb://mongo:27017/assessment_test?replicaSet=rs0"
-      pnpm_config_verify_deps_before_run: "false"
+      MONGODB_URI: 'mongodb://mongo:27017/assessment?replicaSet=rs0'
+      MONGODB_TEST_URI: 'mongodb://mongo:27017/assessment_test?replicaSet=rs0'
+      pnpm_config_verify_deps_before_run: 'false'
     ports:
-      - "127.0.0.1:5555:5555" # Prisma Studio (`pnpm db:studio`)
+      - '127.0.0.1:5555:5555' # Prisma Studio (`pnpm db:studio`)
     volumes:
       - .:/app
       # Anonymous volumes keep Linux node_modules out of the host tree.
@@ -46,7 +46,7 @@ services:
       - /app/apps/api/node_modules
       - /app/packages/db/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/db-ready"]
+      test: ['CMD-SHELL', 'test -f /tmp/db-ready']
       interval: 3s
       timeout: 5s
       retries: 40
@@ -59,13 +59,13 @@ services:
     working_dir: /app
     init: true
     environment:
-      pnpm_config_verify_deps_before_run: "false"
+      pnpm_config_verify_deps_before_run: 'false'
     volumes:
       - .:/app
       - /app/node_modules
       - /app/packages/contract/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "test -f packages/contract/dist/index.js"]
+      test: ['CMD-SHELL', 'test -f packages/contract/dist/index.js']
       interval: 3s
       timeout: 5s
       retries: 40
@@ -82,16 +82,20 @@ services:
         condition: service_healthy
     environment:
       VITE_API_URL: http://localhost:3000
-      pnpm_config_verify_deps_before_run: "false"
+      pnpm_config_verify_deps_before_run: 'false'
     ports:
-      - "127.0.0.1:5173:5173"
+      - '127.0.0.1:5173:5173'
     volumes:
       - .:/app
       - /app/node_modules
       - /app/apps/web/node_modules
       - /app/packages/contract/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:5173'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -110,18 +114,18 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: development
-      PORT: "3000"
-      MONGODB_URI: "mongodb://mongo:27017/assessment?replicaSet=rs0"
-      MONGODB_TEST_URI: "mongodb://mongo:27017/assessment_test?replicaSet=rs0"
+      PORT: '3000'
+      MONGODB_URI: 'mongodb://mongo:27017/assessment?replicaSet=rs0'
+      MONGODB_TEST_URI: 'mongodb://mongo:27017/assessment_test?replicaSet=rs0'
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
       APP_URL: ${APP_URL:-http://localhost:5173}
-      MAIL_FROM: "${MAIL_FROM:-Auth Assessment <no-reply@localhost>}"
+      MAIL_FROM: '${MAIL_FROM:-Auth Assessment <no-reply@localhost>}'
       SESSION_ABSOLUTE_TTL: ${SESSION_ABSOLUTE_TTL:-7d}
       SESSION_IDLE_TTL: ${SESSION_IDLE_TTL:-1d}
       SMTP_URL: ${SMTP_URL:-}
-      pnpm_config_verify_deps_before_run: "false"
+      pnpm_config_verify_deps_before_run: 'false'
     ports:
-      - "127.0.0.1:3000:3000"
+      - '127.0.0.1:3000:3000'
     volumes:
       - .:/app
       - /app/node_modules

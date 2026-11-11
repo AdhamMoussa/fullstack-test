@@ -73,8 +73,7 @@ current.
       reset-password, and sign-out. Signup/signin call `SignInService`; reset uses
       `PasswordResetService` with `signIn: true`. All return the public user where
       applicable.
-- [x] Sign-out uses the package's session handling, clears the cookie, and returns
-      204.
+- [x] Sign-out uses the package's session handling, clears the cookie, and returns 204.
 - [x] Add `UsersModule` + `UsersController` with protected `GET /users/me` using
       `@CurrentUser()`; do not add `/auth/me`.
 - [x] Mark the scaffold `GET /` and the auth routes `@Public()`; keep the package's

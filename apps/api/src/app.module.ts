@@ -27,9 +27,7 @@ import { validateEnv } from './config/env.validation.js'
             absoluteTtl: config.getOrThrow<string>(
               'SESSION_ABSOLUTE_TTL',
             ) as Duration,
-            idleTtl: config.getOrThrow<string>(
-              'SESSION_IDLE_TTL',
-            ) as Duration,
+            idleTtl: config.getOrThrow<string>('SESSION_IDLE_TTL') as Duration,
             trustedOrigins: [webOrigin],
             metadata: ({ headers, ip }) => ({
               ...(typeof headers['user-agent'] === 'string' && {

@@ -71,7 +71,9 @@ export class PrismaAuthStore implements SessionStore, EmailTokenStore {
   }
 
   async deleteUserSessions(userId: string): Promise<void> {
-    await this.prismaService.client.authSession.deleteMany({ where: { userId } })
+    await this.prismaService.client.authSession.deleteMany({
+      where: { userId },
+    })
   }
 
   async saveEmailToken(emailToken: EmailTokenRecord): Promise<void> {
@@ -162,11 +164,12 @@ export class PrismaAuthStore implements SessionStore, EmailTokenStore {
 
     if (tokensOverLimit <= 0) return
 
-    const oldestTokens = await this.prismaService.client.authEmailToken.findMany({
-      orderBy: { expiresAt: 'asc' },
-      take: tokensOverLimit,
-      select: { id: true },
-    })
+    const oldestTokens =
+      await this.prismaService.client.authEmailToken.findMany({
+        orderBy: { expiresAt: 'asc' },
+        take: tokensOverLimit,
+        select: { id: true },
+      })
 
     if (oldestTokens.length === 0) return
 

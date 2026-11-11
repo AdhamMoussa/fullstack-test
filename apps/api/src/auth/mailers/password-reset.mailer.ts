@@ -20,8 +20,7 @@ export class PasswordResetMailer extends PasswordResetHandler {
   }
 
   async findUser(email: string) {
-    const storedCredentials =
-      await this.usersRepository.findCredentials(email)
+    const storedCredentials = await this.usersRepository.findCredentials(email)
 
     return storedCredentials
       ? {

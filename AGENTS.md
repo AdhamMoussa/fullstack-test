@@ -50,7 +50,7 @@
 - `packages/db/generated` lives on the bind mount (no volume). `binaryTargets` includes `native`, `linux-arm64-openssl-3.0.x`, and `debian-openssl-3.0.x`, so one client works on the host (editor types) and in containers on Apple silicon or x86.
 - SWC is the builder configured in `apps/api/nest-cli.json` (with `typeCheck`); nodemon runs plain `nest start`, and `pnpm typecheck` remains the full workspace check.
 - Turbo is for `build`/`lint`/`typecheck`/`test`; wire `@repo/db#generate` before db/API build and typecheck. It is not the dev server.
-- Lint with Oxlint: root `.oxlintrc.json` for Node packages, `apps/web/.oxlintrc.json` for React. Package `lint` scripts run `oxlint` on their source. Biome and ESLint/Prettier are removed; no formatter is configured.
+- Lint with Oxlint: root `.oxlintrc.json` for Node packages, `apps/api/.oxlintrc.json` for type-aware API rules, and `apps/web/.oxlintrc.json` for React. The API lint runs `oxlint --type-aware` and uses the root `oxlint-tsgolint` dev dependency. Format with Prettier using `.prettierrc`; run `pnpm format` or `pnpm format:check` from the host. Biome and ESLint are removed.
 - `.gitignore`: `.env*` except `.env.example`, `packages/db/generated`, `dist`, `.turbo`, `*.tsbuildinfo`.
 
 ## Commands
@@ -68,6 +68,8 @@ pnpm build
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm format
+pnpm format:check
 pnpm db:generate
 pnpm db:push
 pnpm db:studio       # http://localhost:5555

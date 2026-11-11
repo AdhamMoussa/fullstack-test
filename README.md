@@ -6,11 +6,11 @@ Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm +
 
 ## Layout
 
-| Path | Package | What it is |
-| --- | --- | --- |
-| `apps/api` | `@repo/api` | NestJS 12 API (ESM) |
-| `apps/web` | `@repo/web` | React + Vite frontend (scaffold; auth screens pending) |
-| `packages/db` | `@repo/db` | Prisma 6 schema and client for MongoDB (server-only) |
+| Path                | Package          | What it is                                                            |
+| ------------------- | ---------------- | --------------------------------------------------------------------- |
+| `apps/api`          | `@repo/api`      | NestJS 12 API (ESM)                                                   |
+| `apps/web`          | `@repo/web`      | React + Vite frontend (scaffold; auth screens pending)                |
+| `packages/db`       | `@repo/db`       | Prisma 6 schema and client for MongoDB (server-only)                  |
 | `packages/contract` | `@repo/contract` | Shared Zod schemas and inferred request/response types (browser-safe) |
 
 Feature plans, task checklists, and change logs live in `plans/`; auth is in `plans/auth/`.
@@ -34,45 +34,47 @@ No `.env` file is needed: `compose.yaml` provides development defaults.
 
 ## Services
 
-| Service | Port (localhost only) | What it does |
-| --- | --- | --- |
-| `mongo` | 27017 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions) |
-| `db` | 5555 (Prisma Studio) | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`) |
-| `contract` | — | Rebuilds the shared schemas/types on change (`tsup --watch`) |
-| `web` | 5173 | Vite dev server with HMR; scaffold ready for the auth screens |
-| `api` | 3000 | Runs Nest via `nodemon` → `nest start` (SWC builder from `nest-cli.json`). It restarts when `apps/api/src`, the built `@repo/db`, the generated Prisma client, or the built `@repo/contract` changes |
+| Service    | Port (localhost only) | What it does                                                                                                                                                                                         |
+| ---------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mongo`    | 27017                 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions)                                                                                                                                 |
+| `db`       | 5555 (Prisma Studio)  | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`)                                                              |
+| `contract` | —                     | Rebuilds the shared schemas/types on change (`tsup --watch`)                                                                                                                                         |
+| `web`      | 5173                  | Vite dev server with HMR; scaffold ready for the auth screens                                                                                                                                        |
+| `api`      | 3000                  | Runs Nest via `nodemon` → `nest start` (SWC builder from `nest-cli.json`). It restarts when `apps/api/src`, the built `@repo/db`, the generated Prisma client, or the built `@repo/contract` changes |
 
 Source code is bind-mounted into the containers, so edits apply immediately. Each container has its own `node_modules`; your host's `node_modules` is never used inside them.
 
 ## Everyday workflows
 
-| Task | Do this |
-| --- | --- |
-| Edit API code | Save. The API restarts in about a second. |
-| Edit `packages/db/src` | Save. `db` rebuilds and the API restarts. |
-| Edit `packages/contract/src` | Save. `contract` rebuilds and the API restarts. |
-| Edit `apps/web/src` | Save. Vite HMR updates the browser. |
-| Change the Prisma schema | `pnpm db:generate && pnpm db:push` (the API restarts after generation) |
-| Add/upgrade a dependency | `pnpm --filter <pkg> add <dep>` on the host, then restart `pnpm dev` (it rebuilds images and refreshes container `node_modules`) |
-| Inspect data | `pnpm db:studio`, then open http://localhost:5555, or connect any Mongo client to `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
-| Start from an empty database | `docker compose down -v` (deletes all Mongo data), then `pnpm dev` |
+| Task                         | Do this                                                                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edit API code                | Save. The API restarts in about a second.                                                                                                           |
+| Edit `packages/db/src`       | Save. `db` rebuilds and the API restarts.                                                                                                           |
+| Edit `packages/contract/src` | Save. `contract` rebuilds and the API restarts.                                                                                                     |
+| Edit `apps/web/src`          | Save. Vite HMR updates the browser.                                                                                                                 |
+| Change the Prisma schema     | `pnpm db:generate && pnpm db:push` (the API restarts after generation)                                                                              |
+| Add/upgrade a dependency     | `pnpm --filter <pkg> add <dep>` on the host, then restart `pnpm dev` (it rebuilds images and refreshes container `node_modules`)                    |
+| Inspect data                 | `pnpm db:studio`, then open http://localhost:5555, or connect any Mongo client to `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
+| Start from an empty database | `docker compose down -v` (deletes all Mongo data), then `pnpm dev`                                                                                  |
 
 ## Scripts
 
 Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs inside the running containers, so start `pnpm dev` first.
 
-| Script | What it does |
-| --- | --- |
-| `pnpm dev` | Build images, renew `node_modules` volumes, and start all services |
-| `pnpm dev:down` | Stop and remove the containers (Mongo data is kept) |
-| `pnpm build` | Build all packages and apps (Turbo) |
-| `pnpm lint` | Oxlint for the whole workspace |
-| `pnpm typecheck` | `tsc --noEmit` for the whole workspace |
-| `pnpm test` | Unit tests (Vitest) |
-| `pnpm db:generate` | Regenerate the Prisma client |
-| `pnpm db:push` | Push the schema (indexes) to the dev database |
-| `pnpm db:studio` | Prisma Studio on http://localhost:5555 |
-| `pnpm infra:dev` / `pnpm infra:dev:down` | Start/stop MongoDB only |
+| Script                                   | What it does                                                       |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm dev`                               | Build images, renew `node_modules` volumes, and start all services |
+| `pnpm dev:down`                          | Stop and remove the containers (Mongo data is kept)                |
+| `pnpm build`                             | Build all packages and apps (Turbo)                                |
+| `pnpm lint`                              | Oxlint for the whole workspace                                     |
+| `pnpm typecheck`                         | `tsc --noEmit` for the whole workspace                             |
+| `pnpm test`                              | Unit tests (Vitest)                                                |
+| `pnpm format`                            | Format the workspace with Prettier                                 |
+| `pnpm format:check`                      | Check formatting without writing files                             |
+| `pnpm db:generate`                       | Regenerate the Prisma client                                       |
+| `pnpm db:push`                           | Push the schema (indexes) to the dev database                      |
+| `pnpm db:studio`                         | Prisma Studio on http://localhost:5555                             |
+| `pnpm infra:dev` / `pnpm infra:dev:down` | Start/stop MongoDB only                                            |
 
 ## Shared contract
 
@@ -102,18 +104,18 @@ Tests run against a separate `assessment_test` database. Both Vitest configs set
 
 Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` and `packages/db` show the values to use if you run something on the host instead.
 
-| Variable | Used by | Docker dev value |
-| --- | --- | --- |
-| `MONGODB_URI` | api, db | `mongodb://mongo:27017/assessment?replicaSet=rs0` |
-| `MONGODB_TEST_URI` | api, db (tests) | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
-| `PORT` | api | `3000` |
-| `WEB_ORIGIN` | api (CORS/CSRF trusted origin) | `http://localhost:5173` |
-| `APP_URL` | api (reset links) | `http://localhost:5173` |
-| `MAIL_FROM` | api (mail sender) | `Auth Assessment <no-reply@localhost>` |
-| `SESSION_ABSOLUTE_TTL` | api | `7d` |
-| `SESSION_IDLE_TTL` | api | `1d` |
-| `SMTP_URL` | api (optional) | unset; logs mail in development |
-| `VITE_API_URL` | web | `http://localhost:3000` |
+| Variable               | Used by                        | Docker dev value                                       |
+| ---------------------- | ------------------------------ | ------------------------------------------------------ |
+| `MONGODB_URI`          | api, db                        | `mongodb://mongo:27017/assessment?replicaSet=rs0`      |
+| `MONGODB_TEST_URI`     | api, db (tests)                | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
+| `PORT`                 | api                            | `3000`                                                 |
+| `WEB_ORIGIN`           | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
+| `APP_URL`              | api (reset links)              | `http://localhost:5173`                                |
+| `MAIL_FROM`            | api (mail sender)              | `Auth Assessment <no-reply@localhost>`                 |
+| `SESSION_ABSOLUTE_TTL` | api                            | `7d`                                                   |
+| `SESSION_IDLE_TTL`     | api                            | `1d`                                                   |
+| `SMTP_URL`             | api (optional)                 | unset; logs mail in development                        |
+| `VITE_API_URL`         | web                            | `http://localhost:3000`                                |
 
 Auth uses `@nestjs/authentication` server-side sessions in an httpOnly `__Host-sid`
 cookie. There are no JWT or localStorage secrets. The API sets Helmet-equivalent
@@ -122,15 +124,15 @@ checks.
 
 ## API
 
-| Method | Path | Auth | Status |
-| --- | --- | --- | --- |
-| `GET` | `/` | none | Scaffold endpoint, returns `Hello World!` |
-| `POST` | `/auth/signup` | none | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
-| `POST` | `/auth/signin` | none | 200 `{ user }` + session cookie; 401 bad credentials |
-| `POST` | `/auth/forgot-password` | none | 202 generic empty response for known and unknown emails; 400 invalid input |
-| `POST` | `/auth/reset-password` | none | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
-| `POST` | `/auth/sign-out` | none | 204 and clears the cookie |
-| `GET` | `/users/me` | session cookie | 200 with the public user; 401 without a valid session |
+| Method | Path                    | Auth           | Status                                                                           |
+| ------ | ----------------------- | -------------- | -------------------------------------------------------------------------------- |
+| `GET`  | `/`                     | none           | Scaffold endpoint, returns `Hello World!`                                        |
+| `POST` | `/auth/signup`          | none           | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
+| `POST` | `/auth/signin`          | none           | 200 `{ user }` + session cookie; 401 bad credentials                             |
+| `POST` | `/auth/forgot-password` | none           | 202 generic empty response for known and unknown emails; 400 invalid input       |
+| `POST` | `/auth/reset-password`  | none           | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
+| `POST` | `/auth/sign-out`        | none           | 204 and clears the cookie                                                        |
+| `GET`  | `/users/me`             | session cookie | 200 with the public user; 401 without a valid session                            |
 
 `PublicUser` includes `id`, `email`, `name`, `emailVerified`, and ISO `createdAt`/
 `updatedAt` timestamps. Passwords, hashes, session tokens, and reset tokens never

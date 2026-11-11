@@ -49,8 +49,7 @@ export class CredentialsService {
     email: string,
     password: string,
   ): Promise<PublicUser | null> {
-    const storedCredentials =
-      await this.usersRepository.findCredentials(email)
+    const storedCredentials = await this.usersRepository.findCredentials(email)
     // With no account the hasher checks a dummy hash, so the response time
     // does not reveal which addresses are registered.
     const passwordMatches = await this.passwordHasher.verify(

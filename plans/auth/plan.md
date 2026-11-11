@@ -131,14 +131,14 @@ React forms.
 
 ## API design
 
-| Method | Path | Auth | Success | Errors |
-| --- | --- | --- | --- | --- |
-| `POST` | `/auth/signup` | public | 201 `{ user }`, sets session cookie | 400 validation, 409 duplicate email |
-| `POST` | `/auth/signin` | public | 200 `{ user }`, sets session cookie | 400 validation, 401 bad credentials |
-| `POST` | `/auth/forgot-password` | public | 202, no body | 400 validation |
-| `POST` | `/auth/reset-password` | public | 200 `{ user }`, sets session cookie | 400 validation, 400 invalid/expired/used token |
-| `GET` | `/users/me` | session cookie | 200 `PublicUser` | 401 missing/invalid session |
-| `POST` | `/auth/sign-out` | session cookie | 204, clears cookie | 401/204 when already signed out |
+| Method | Path                    | Auth           | Success                             | Errors                                         |
+| ------ | ----------------------- | -------------- | ----------------------------------- | ---------------------------------------------- |
+| `POST` | `/auth/signup`          | public         | 201 `{ user }`, sets session cookie | 400 validation, 409 duplicate email            |
+| `POST` | `/auth/signin`          | public         | 200 `{ user }`, sets session cookie | 400 validation, 401 bad credentials            |
+| `POST` | `/auth/forgot-password` | public         | 202, no body                        | 400 validation                                 |
+| `POST` | `/auth/reset-password`  | public         | 200 `{ user }`, sets session cookie | 400 validation, 400 invalid/expired/used token |
+| `GET`  | `/users/me`             | session cookie | 200 `PublicUser`                    | 401 missing/invalid session                    |
+| `POST` | `/auth/sign-out`        | session cookie | 204, clears cookie                  | 401/204 when already signed out                |
 
 Requests:
 

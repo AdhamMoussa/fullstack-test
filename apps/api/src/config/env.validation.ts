@@ -37,8 +37,7 @@ export function validateEnv(config: Record<string, unknown>): Env {
   if (!validationResult.success) {
     const validationErrors = validationResult.error.issues
       .map(
-        (issue) =>
-          `${issue.path.join('.') || 'environment'}: ${issue.message}`,
+        (issue) => `${issue.path.join('.') || 'environment'}: ${issue.message}`,
       )
       .join('; ')
 

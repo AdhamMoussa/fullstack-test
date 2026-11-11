@@ -1,16 +1,16 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
 
 allowBuilds:
-  "@prisma/client": true
-  "@prisma/engines": true
-  "@swc/core": true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@swc/core': true
   esbuild: true
   prisma: true
 
 catalog:
-  "@types/node": "^26.6.6"
-  tsup: "^9.0.0"
-  typescript: "~6.0.3"
-  zod: "4.6.7"
+  '@types/node': '^26.6.6'
+  tsup: '^9.0.0'
+  typescript: '~6.0.3'
+  zod: '4.6.7'

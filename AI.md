@@ -84,6 +84,9 @@ that did not match the architecture or product requirements.
   before implementation, rather than after the work is done.
 - **One class per file.** I required every class to live in its own file, with related
   classes grouped in feature subfolders such as `src/auth/mailers/`.
+- **Type-aware linting and formatting.** I enabled type-aware Oxlint for the API with
+  `oxlint-tsgolint`, and added a Prettier configuration with `format`/`format:check`
+  scripts; Oxlint remains the linter.
 - **Expressive naming.** I require method and variable names to state intent instead
   of generic placeholders such as `verify`, `found`, or `valid`.
 

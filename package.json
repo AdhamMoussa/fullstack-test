@@ -13,6 +13,8 @@
     "typecheck:inner": "turbo run typecheck",
     "test": "docker compose exec api pnpm test:inner",
     "test:inner": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "db:generate": "docker compose exec db pnpm --filter @repo/db generate",
     "db:push": "docker compose exec db pnpm --filter @repo/db push",
     "db:studio": "docker compose exec db pnpm --filter @repo/db studio",
@@ -21,6 +23,8 @@
   },
   "devDependencies": {
     "oxlint": "^1.93.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "prettier": "^3.9.10",
     "turbo": "^2.11.10"
   }
 }
