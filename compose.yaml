@@ -122,6 +122,9 @@ services:
       MAIL_FROM: '${MAIL_FROM:-Auth Assessment <no-reply@localhost>}'
       SESSION_ABSOLUTE_TTL: ${SESSION_ABSOLUTE_TTL:-7d}
       SESSION_IDLE_TTL: ${SESSION_IDLE_TTL:-1d}
+      # Plain-HTTP dev: Safari drops Secure cookies on http://localhost.
+      # Production keeps the default (true).
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SMTP_URL: ${SMTP_URL:-}
       pnpm_config_verify_deps_before_run: 'false'
     ports:

@@ -67,7 +67,8 @@ that did not match the architecture or product requirements.
   behind each change stays visible.
 - Driving the real browser flow against the Docker stack (not just unit checks)
   confirmed the cookie flags, empty browser storage, guard redirects, and the
-  single-use reset link end to end.
+  single-use reset link end to end. This should cover Safari as well, since it
+  handles Secure cookies on `localhost` differently from Chrome and Firefox.
 
 ## Where I changed AI's direction
 
@@ -126,6 +127,12 @@ that did not match the architecture or product requirements.
   `layouts`/`pages`/`components`/`lib`.
 - **Expressive naming.** I require method and variable names to state intent instead
   of generic placeholders such as `verify`, `found`, or `valid`.
+- **Safari session cookie.** The AI's browser verification only used Chrome, and it
+  relied on the auth package's note that browsers accept Secure cookies on
+  `http://localhost`. My fresh-clone smoke test in Safari showed signup creating the
+  account but `GET /users/me` returning 401, because Safari drops Secure cookies over
+  plain HTTP. The fix is an explicit `SESSION_COOKIE_SECURE` flag, secure by default
+  and disabled only in the dev Compose config; the AI proposed the env-flag design.
 
 ## Product decisions
 

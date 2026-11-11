@@ -107,8 +107,9 @@ React forms.
    instead of hand-written JWT/guard/hash/reset code. It is the security-sensitive
    path; prefer the framework implementation.
 2. **httpOnly session cookie, not bearer JWT.** Signup/signin set the package's
-   `__Host-sid` cookie: HttpOnly, Secure in production, SameSite=Lax. The web app
-   uses `withCredentials: true`; there is no token in `localStorage`, no
+   `__Host-sid` cookie: HttpOnly, Secure in production, SameSite=Lax; dev Compose
+   turns `SESSION_COOKIE_SECURE` off so the cookie is `sid` over plain HTTP. The
+   web app uses `withCredentials: true`; there is no token in `localStorage`, no
    `Authorization` header, and no refresh token.
 3. **Same-site dev works without Nginx.** The web app on `localhost:5173` and API on
    `localhost:3000` are different origins but the same site. The API enables CORS
@@ -352,7 +353,10 @@ consistent with Mantine defaults.
 - Cookie sessions need credentialed CORS, `session.trustedOrigins`, and the CSRF
   origin checks. Keep the web/API same-site; avoid `SameSite=None`.
 - The `__Host-` cookie requires `Secure` and a path of `/`. Chrome/Firefox/curl
-  accept it on `localhost`; use `cookie.secure: false` for plain-HTTP LAN hosts.
+  accept it on `localhost`; use `cookie.secure: false` for plain-HTTP LAN hosts
+  (`SESSION_COOKIE_SECURE=false`, dev Compose default).
+- Browser verification must include Safari: it drops Secure cookies over plain
+  `http://localhost`, so dev relies on the unsuffixed `sid` cookie there.
 - The package owns reset-token lifecycle; do not add a custom `PasswordResetToken`
   model or return raw tokens. The dev mail transport logs reset links.
 - Reset signs the user in, so the frontend goes to `/app`, not `/signin`.

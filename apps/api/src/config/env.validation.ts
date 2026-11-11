@@ -30,6 +30,12 @@ const envSchema = z.object({
   MAIL_FROM: z.string().min(1).default('Auth Assessment <no-reply@localhost>'),
   SESSION_ABSOLUTE_TTL: durationSchema.default('7d'),
   SESSION_IDLE_TTL: durationSchema.default('1d'),
+  // Keep the Secure flag everywhere except plain-HTTP local dev: Safari drops
+  // Secure cookies on http://localhost, unlike Chrome and Firefox.
+  SESSION_COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -118,34 +118,39 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 14 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 19 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
 
 ## Environment variables
 
 Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` and `packages/db` show the values to use if you run something on the host instead.
 
-| Variable               | Used by                        | Docker dev value                                       |
-| ---------------------- | ------------------------------ | ------------------------------------------------------ |
-| `MONGODB_URI`          | api, db                        | `mongodb://mongo:27017/assessment?replicaSet=rs0`      |
-| `MONGODB_TEST_URI`     | api, db (tests)                | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
-| `NODE_ENV`             | api (docs toggle)              | `development` (the docs are disabled in `production`)  |
-| `PORT`                 | api                            | `3000`                                                 |
-| `WEB_ORIGIN`           | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
-| `APP_URL`              | api (reset links)              | `http://localhost:5173`                                |
-| `MAIL_FROM`            | api (mail sender)              | `Auth Assessment <no-reply@localhost>`                 |
-| `SESSION_ABSOLUTE_TTL` | api                            | `7d`                                                   |
-| `SESSION_IDLE_TTL`     | api                            | `1d`                                                   |
-| `SMTP_URL`             | api (optional)                 | unset; logs mail in development                        |
-| `VITE_API_URL`         | web                            | `http://localhost:3000`                                |
+| Variable                | Used by                        | Docker dev value                                       |
+| ----------------------- | ------------------------------ | ------------------------------------------------------ |
+| `MONGODB_URI`           | api, db                        | `mongodb://mongo:27017/assessment?replicaSet=rs0`      |
+| `MONGODB_TEST_URI`      | api, db (tests)                | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
+| `NODE_ENV`              | api (docs toggle)              | `development` (the docs are disabled in `production`)  |
+| `PORT`                  | api                            | `3000`                                                 |
+| `WEB_ORIGIN`            | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
+| `APP_URL`               | api (reset links)              | `http://localhost:5173`                                |
+| `MAIL_FROM`             | api (mail sender)              | `Auth Assessment <no-reply@localhost>`                 |
+| `SESSION_ABSOLUTE_TTL`  | api                            | `7d`                                                   |
+| `SESSION_IDLE_TTL`      | api                            | `1d`                                                   |
+| `SESSION_COOKIE_SECURE` | api (session cookie)           | `false` (default `true`; see the session notes)        |
+| `SMTP_URL`              | api (optional)                 | unset; logs mail in development                        |
+| `VITE_API_URL`          | web                            | `http://localhost:3000`                                |
 
 ## Sessions and password reset
 
-Auth uses `@nestjs/authentication` server-side sessions in an httpOnly `__Host-sid`
-cookie. There are no JWT or localStorage secrets.
+Auth uses `@nestjs/authentication` server-side sessions in an httpOnly cookie.
+There are no JWT or localStorage secrets.
 
 - The session is a server-side record in MongoDB (`auth_sessions`). The browser gets
-  only the `__Host-sid` cookie (HttpOnly, Secure, SameSite=Lax, Path=/). Lifetimes
-  come from `SESSION_ABSOLUTE_TTL` (default 7d) and `SESSION_IDLE_TTL` (default 1d).
+  only the session cookie. Production uses `__Host-sid` (HttpOnly, Secure,
+  SameSite=Lax, Path=/). Local Docker dev sets `SESSION_COOKIE_SECURE=false`, so the
+  cookie is `sid` without Secure, because Safari rejects Secure cookies over
+  `http://localhost` (Chrome and Firefox accept them). Never disable it in
+  production. Lifetimes come from `SESSION_ABSOLUTE_TTL` (default 7d) and
+  `SESSION_IDLE_TTL` (default 1d).
 - CSRF origin checks reject state-changing requests from untrusted origins (403);
   CORS allows credentials only from `WEB_ORIGIN`; security headers (CSP, HSTS,
   X-Frame-Options) are enabled.
@@ -221,7 +226,8 @@ http://localhost:3000/docs/json. The docs are served when `NODE_ENV` is not
 Request bodies and responses are generated from the `@repo/contract` Zod schemas (with
 `@Body({ schema })` and `standardSchema` response decorators); there are no DTO
 classes. To try a protected route, call `POST /auth/signin` (or `/auth/signup`) in the
-UI first: the browser stores the httpOnly `__Host-sid` cookie, and "Try it out" on
+UI first: the browser stores the httpOnly session cookie (`sid` in Docker dev,
+`__Host-sid` over HTTPS), and "Try it out" on
 `GET /users/me` then works.
 
 ## Troubleshooting

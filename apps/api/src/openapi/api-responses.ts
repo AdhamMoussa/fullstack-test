@@ -10,7 +10,7 @@ export const VALIDATION_ERROR_DESCRIPTION =
 export const sessionCookieHeader = {
   'Set-Cookie': {
     description:
-      'Session cookie: __Host-sid=…; HttpOnly; Secure; SameSite=Lax; Path=/',
+      'Session cookie: the httpOnly `__Host-sid` cookie (Secure, Path=/), or `sid` without Secure when `SESSION_COOKIE_SECURE=false`; SameSite=Lax either way',
     schema: { type: 'string' },
   },
 }

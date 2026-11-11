@@ -11,6 +11,7 @@ import { AppController } from './app.controller.js'
 import { AppService } from './app.service.js'
 
 import { validateEnv } from './config/env.validation.js'
+import { sessionCookieName } from './config/session-cookie.js'
 
 @Module({
   imports: [
@@ -21,9 +22,14 @@ import { validateEnv } from './config/env.validation.js'
       useFactory: (config: ConfigService) => {
         const webOrigin = config.getOrThrow<string>('WEB_ORIGIN')
         const appUrl = config.getOrThrow<string>('APP_URL')
+        const secureSessionCookie = config.getOrThrow<boolean>(
+          'SESSION_COOKIE_SECURE',
+        )
 
         return {
           session: {
+            cookieName: sessionCookieName(secureSessionCookie),
+            cookie: { secure: secureSessionCookie },
             absoluteTtl: config.getOrThrow<string>(
               'SESSION_ABSOLUTE_TTL',
             ) as Duration,

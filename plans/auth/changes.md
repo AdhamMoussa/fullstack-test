@@ -244,6 +244,33 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/{plan,tasks,changes}.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Safari session cookie in local dev
+
+- **Requested by:** Developer
+- **Request:** A fresh-clone smoke test showed that signing up in Safari created the
+  account, but the following `GET /users/me` returned 401 `missing_credentials`, so
+  the user never signed in; then “fix it”.
+- **Change:** Added an explicit `SESSION_COOKIE_SECURE` env flag (parsed as
+  `'true'`/`'false'`, default `true`). The API now passes
+  `cookieName: sessionCookieName(secure)` and `cookie: { secure }` to
+  `@nestjs/authentication`, where `sessionCookieName()` lives in
+  `apps/api/src/config/session-cookie.ts` and returns `__Host-sid` or `sid`. The
+  OpenAPI document and its static descriptions use the same helper. Dev Compose sets
+  `SESSION_COOKIE_SECURE=false`, and the API `.env.example` documents it. Added unit
+  tests for the env parsing and the cookie-name helper.
+- **Why:** Safari drops `Secure` cookies over plain HTTP, including
+  `http://localhost`, while Chrome and Firefox accept them there. The package's
+  default `__Host-sid` cookie is therefore silently discarded in Safari dev.
+- **Impact:** New `SESSION_COOKIE_SECURE` env var (default `true`, Dev Compose
+  `false`); local dev uses the `sid` cookie without `Secure`; production behavior is
+  unchanged. New API unit tests; the OpenAPI e2e suite pins the secure default.
+- **Files:** `apps/api/src/config/env.validation.ts` (+ spec),
+  `apps/api/src/config/session-cookie.ts` (+ spec), `apps/api/src/app.module.ts`,
+  `apps/api/src/openapi/{setup-openapi,api-responses,openapi-schema-ids}.ts`,
+  `apps/api/vitest.config.e2e.ts`, `apps/api/.env.example`, `compose.yaml`,
+  `README.md`, `AGENTS.md`, `AI.md`, `plans/auth/{plan,changes}.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

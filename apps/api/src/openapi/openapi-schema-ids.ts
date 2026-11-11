@@ -40,7 +40,7 @@ const contractSchemasWithIds = [
     schema: authResponseSchema,
     id: 'AuthResponse',
     description:
-      'The signed-in user; the session travels in the __Host-sid httpOnly cookie, never in the body.',
+      'The signed-in user; the session travels in the httpOnly session cookie (`__Host-sid`, or `sid` when `SESSION_COOKIE_SECURE=false`), never in the body.',
   },
   {
     schema: apiErrorSchema,
