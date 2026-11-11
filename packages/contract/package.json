@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch",
-    "lint": "biome check",
+    "lint": "oxlint src tsup.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

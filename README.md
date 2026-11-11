@@ -2,30 +2,30 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
 
-> **Status:** work in progress. The workspace, Docker dev stack, database package, and shared contract package are in place. The auth endpoints and `apps/web` are not built yet.
+> **Status:** work in progress. The workspace, Docker dev stack, database package, shared contract, and a Vite React scaffold are in place. The auth endpoints and auth screens are not built yet.
 
 ## Layout
 
 | Path | Package | What it is |
 | --- | --- | --- |
 | `apps/api` | `@repo/api` | NestJS 12 API (ESM) |
-| `apps/web` | `@repo/web` | React + Vite frontend (planned) |
+| `apps/web` | `@repo/web` | React + Vite frontend (scaffold; auth screens pending) |
 | `packages/db` | `@repo/db` | Prisma 6 schema and client for MongoDB (server-only) |
 | `packages/contract` | `@repo/contract` | Shared Zod schemas and inferred request/response types (browser-safe) |
 
 ## Prerequisites
 
 - **Docker Desktop**. Everything runs in containers.
-- **Node 26 and pnpm 11** on the host. You need them to install dependencies (this updates `pnpm-lock.yaml`), to give your editor types and linting, and to run the root scripts. The apps don't run on the host.
+- **Node 26 and pnpm 11** on the host. You need them to install dependencies (this updates `pnpm-lock.yaml`), to give your editor types and Oxlint, and to run the root scripts. The apps don't run on the host.
 
 ## Quick start
 
 ```bash
-pnpm install   # host: lockfile, editor types, Biome
+pnpm install   # host: lockfile, editor types, Oxlint
 pnpm dev       # builds images and starts mongo, db, api in the foreground
 ```
 
-The API is at http://localhost:3000. Stop the stack with `Ctrl+C`, or run `pnpm dev:down`.
+The API is at http://localhost:3000 and the web app at http://localhost:5173. Stop the stack with `Ctrl+C`, or run `pnpm dev:down`.
 
 No `.env` file is needed: `compose.yaml` provides development defaults.
 
@@ -36,6 +36,7 @@ No `.env` file is needed: `compose.yaml` provides development defaults.
 | `mongo` | 27017 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions) |
 | `db` | 5555 (Prisma Studio) | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`) |
 | `contract` | — | Rebuilds the shared schemas/types on change (`tsup --watch`) |
+| `web` | 5173 | Vite dev server with HMR; scaffold ready for the auth screens |
 | `api` | 3000 | Runs Nest via `nodemon` → `nest start` (SWC builder from `nest-cli.json`). It restarts when `apps/api/src`, the built `@repo/db`, the generated Prisma client, or the built `@repo/contract` changes |
 
 Source code is bind-mounted into the containers, so edits apply immediately. Each container has its own `node_modules`; your host's `node_modules` is never used inside them.
@@ -47,6 +48,7 @@ Source code is bind-mounted into the containers, so edits apply immediately. Eac
 | Edit API code | Save. The API restarts in about a second. |
 | Edit `packages/db/src` | Save. `db` rebuilds and the API restarts. |
 | Edit `packages/contract/src` | Save. `contract` rebuilds and the API restarts. |
+| Edit `apps/web/src` | Save. Vite HMR updates the browser. |
 | Change the Prisma schema | `pnpm db:generate && pnpm db:push` (the API restarts after generation) |
 | Add/upgrade a dependency | `pnpm --filter <pkg> add <dep>` on the host, then restart `pnpm dev` (it rebuilds images and refreshes container `node_modules`) |
 | Inspect data | `pnpm db:studio`, then open http://localhost:5555, or connect any Mongo client to `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
@@ -61,7 +63,7 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 | `pnpm dev` | Build images, renew `node_modules` volumes, and start all services |
 | `pnpm dev:down` | Stop and remove the containers (Mongo data is kept) |
 | `pnpm build` | Build all packages and apps (Turbo) |
-| `pnpm lint` | Biome check for the whole workspace |
+| `pnpm lint` | Oxlint for the whole workspace |
 | `pnpm typecheck` | `tsc --noEmit` for the whole workspace |
 | `pnpm test` | Unit tests (Vitest) |
 | `pnpm db:generate` | Regenerate the Prisma client |
@@ -79,7 +81,7 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 - `authResponseSchema` / `AuthResponse` — access token plus user
 - `apiErrorSchema` / `ApiError` — shared error response
 
-Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the planned frontend will use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
+Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the web app will use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
 
 ## Tests
 
@@ -103,6 +105,7 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | `JWT_SECRET` | api | `dev-only-change-me` (override from your shell) |
 | `JWT_EXPIRES_IN` | api | `1h` |
 | `WEB_ORIGIN` | api (CORS) | `http://localhost:5173` |
+| `VITE_API_URL` | web | `http://localhost:3000` |
 
 ## API
 

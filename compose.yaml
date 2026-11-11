@@ -71,6 +71,32 @@ services:
       retries: 40
       start_period: 20s
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    working_dir: /app
+    init: true
+    depends_on:
+      contract:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: http://localhost:3000
+      pnpm_config_verify_deps_before_run: "false"
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/contract/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   api:
     build:
       context: .
@@ -97,6 +123,7 @@ services:
       - .:/app
       - /app/node_modules
       - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
       - /app/packages/db/node_modules
       - /app/packages/contract/node_modules
 

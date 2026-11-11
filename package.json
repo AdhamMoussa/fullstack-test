@@ -20,7 +20,7 @@
     "infra:dev:down": "docker compose stop mongo"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.6",
+    "oxlint": "^1.93.0",
     "turbo": "^2.11.10"
   }
 }

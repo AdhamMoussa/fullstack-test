@@ -23,13 +23,13 @@
 - Use pnpm workspaces + Turbo. Keep a single `pnpm-lock.yaml`; do not add npm or yarn lockfiles.
 - Package names: `@repo/web`, `@repo/api`, `@repo/db`, `@repo/contract`. Import across packages by name, never by relative path.
 - Target layout:
-  - `apps/web` — Vite React app with Mantine, RHF/Zod, Axios, TanStack Query/Router; imports `@repo/contract` only
+  - `apps/web` — Vite React app with Mantine, RHF/Zod, Axios, TanStack Query/Router; Dockerfile in `apps/web/Dockerfile`; container `web`; imports `@repo/contract` only
   - `apps/api` — NestJS 12 ESM app; Dockerfile in `apps/api/Dockerfile`; container `api`
   - `packages/db` — Prisma 6.19.0 schema, generated client, and singleton export; Dockerfile in `packages/db/Dockerfile`; container `db`
   - `packages/contract` — Zod schemas + inferred input/output types; Dockerfile in `packages/contract/Dockerfile`; container `contract`; browser-safe
-  - `compose.yaml` — `mongo`, `db` (tsup watch), `contract` (tsup watch), and `api` (nodemon) containers
+  - `compose.yaml` — `mongo`, `db` (tsup watch), `contract` (tsup watch), `api` (nodemon), and `web` (Vite) containers
 - Dependency direction: `web -> contract`; `api -> contract + db`; `db` and `contract` must not import each other.
-- Shared packages are ESM (`"type": "module"`), built by tsup to `dist`, with `main`/`types`/`exports` pointing at `dist`; apps depend on them with `workspace:*`. Every shared package exposes `build`, `watch`, `lint` (`biome check`), and `typecheck` (`tsc --noEmit`).
+- Shared packages are ESM (`"type": "module"`), built by tsup to `dist`, with `main`/`types`/`exports` pointing at `dist`; apps depend on them with `workspace:*`. Every shared package exposes `build`, `watch`, `lint` (`oxlint`), and `typecheck` (`tsc --noEmit`).
 - `packages/contract`: `src/auth.ts` (email/password rules, `signUpInputSchema`, `signInInputSchema`, `SignUpInput`, `SignInInput`) and `src/common.ts` (`userSchema`/`PublicUser`, `authResponseSchema`/`AuthResponse`, `apiErrorSchema`/`ApiError`), all exported from `src/index.ts`. Types via `z.infer`; tsup `platform: "neutral"`, `external: ["zod"]`; Vitest tests live beside the schemas.
 - `packages/db`: Prisma schema in `prisma/`, generated client in `generated/prisma` (gitignored), globalThis-cached singleton, re-exported Prisma types; no Nest imports. Scripts `generate`/`push`/`studio` (root `db:*` aliases); tsup `platform: "node"`, externalize Prisma runtime.
 - `User` is the only DB model: ObjectId `id`, unique normalized `email`, `name`, `passwordHash`, `createdAt`, `updatedAt`. Auth is stateless JWT, so do not add Session/RefreshToken models.
@@ -38,15 +38,15 @@
 - API is ESM (`"type": "module"`): use `.js` extensions in relative imports; do not add CommonJS settings.
 - Root scripts: `dev`, `dev:down`, `build`, `lint`, `typecheck`, `test`, `db:generate`, `db:push`, `db:studio`, `infra:dev`, `infra:dev:down`.
 - Ports: web `5173`, API `3000`, Prisma Studio `5555`, MongoDB `27017`. Publish every port on `127.0.0.1` (Studio has no auth).
-- Local dev runs as separate Compose services. `db` runs its `dev` script: `prisma generate` → `db push` to the dev and test DBs → `tsup --watch --onSuccess 'touch /tmp/db-ready'` (the healthcheck waits for that file). `contract` runs `tsup --watch`; `api` runs `nodemon` → `nest start` (SWC builder from `nest-cli.json`), watching `apps/api/src`, `packages/db/dist`, `packages/db/generated/prisma/index.js`, and `packages/contract/dist`. Package rebuilds and client regeneration restart the API.
-- Every app/package gets its own Dockerfile and Compose service; add one for `apps/web` when created. Dockerfiles use `pnpm fetch` (lockfile-only layer) → `COPY . .` → `CI=true pnpm install --offline --frozen-lockfile`; do not list per-package `package.json` files. `CI=true` is required or pnpm aborts (no TTY to confirm relinking the fetched store).
+- Local dev runs as separate Compose services. `db` runs its `dev` script: `prisma generate` → `db push` to the dev and test DBs → `tsup --watch --onSuccess 'touch /tmp/db-ready'` (the healthcheck waits for that file). `contract` runs `tsup --watch`; `api` runs `nodemon` → `nest start` (SWC builder from `nest-cli.json`), watching `apps/api/src`, `packages/db/dist`, `packages/db/generated/prisma/index.js`, and `packages/contract/dist`; `web` runs Vite with HMR on port 5173. Package rebuilds and client regeneration restart the API.
+- Every app/package has its own Dockerfile and Compose service. Dockerfiles use `pnpm fetch` (lockfile-only layer) → `COPY . .` → `CI=true pnpm install --offline --frozen-lockfile`; do not list per-package `package.json` files. `CI=true` is required or pnpm aborts (no TTY to confirm relinking the fetched store).
 - Dev Dockerfiles must install `procps` and services use `init: true`: Nest CLI kills its app child via `tree-kill`, which shells out to `ps`. Without it, restarts orphan the old server and fail with `EADDRINUSE`.
 - API nodemon ignores `packages/db/dist/*.d.ts`/`*.map` and `packages/contract/dist/*.d.ts`/`*.map` so one tsup rebuild triggers one restart, not two. No polling: bind-mount file events reach the containers.
-- Source is bind-mounted at `/app`; every app/package `node_modules` is an anonymous volume per service, refreshed from the image by `pnpm dev` (`--renew-anon-volumes`). Do not switch them to named volumes; Docker only seeds named volumes once, so new dependencies would never appear.
+- Source is bind-mounted at `/app`; every app/package `node_modules` is an anonymous volume per service, refreshed from the image by `pnpm dev` (`--renew-anon-volumes`). Do not switch them to named volumes; Docker only seeds named volumes once, so new dependencies would never appear. The `api` container also mounts `apps/web/node_modules` because root build/lint/typecheck run there.
 - `packages/db/generated` lives on the bind mount (no volume). `binaryTargets` includes `native`, `linux-arm64-openssl-3.0.x`, and `debian-openssl-3.0.x`, so one client works on the host (editor types) and in containers on Apple silicon or x86.
 - SWC is the builder configured in `apps/api/nest-cli.json` (with `typeCheck`); nodemon runs plain `nest start`, and `pnpm typecheck` remains the full workspace check.
 - Turbo is for `build`/`lint`/`typecheck`/`test`; wire `@repo/db#generate` before db/API build and typecheck. It is not the dev server.
-- Lint/format with Biome (`biome.json`); package `lint` scripts run `biome check`. Do not add ESLint/Prettier.
+- Lint with Oxlint: root `.oxlintrc.json` for Node packages, `apps/web/.oxlintrc.json` for React. Package `lint` scripts run `oxlint` on their source. Biome and ESLint/Prettier are removed; no formatter is configured.
 - `.gitignore`: `.env*` except `.env.example`, `packages/db/generated`, `dist`, `.turbo`, `*.tsbuildinfo`.
 
 ## Commands
@@ -56,7 +56,7 @@
 - Schema changes: `pnpm db:generate && pnpm db:push` (the API restarts on regeneration). `db:push` targets the dev DB only; the test DB is pushed when the `db` container starts.
 
 ```bash
-pnpm dev             # foreground: build + start mongo, db, contract, api (renews node_modules volumes)
+pnpm dev             # foreground: build + start mongo, db, contract, api, web (renews node_modules volumes)
 pnpm dev:down        # stop and remove containers
 
 # While `pnpm dev` is running:
@@ -77,6 +77,7 @@ docker compose exec db pnpm --filter @repo/db exec prisma <command>
 
 ## Frontend
 
+- The Vite scaffold is in place; auth screens and the libraries below are still to be added.
 - `apps/web` uses Mantine for UI, react-hook-form + `zodResolver` with `@repo/contract` schemas, Axios for HTTP, TanStack Query for server state, and TanStack Router for routing. Do not add another UI kit, `@mantine/form`, `react-router-dom`, or another data-fetching library.
 - Wrap the app in `MantineProvider` and `QueryClientProvider` with one `QueryClient`; import Mantine's global styles in the entrypoint.
 - All HTTP goes through one Axios instance in `src/lib/api.ts`, using `VITE_API_URL`; attach the current access token and on 401 clear auth state and redirect to `/signin`. Exempt signup/signin requests so their 401s reach the form.

@@ -9,12 +9,11 @@
   "scripts": {
     "build": "nest build",
     "dev": "nodemon",
-    "format": "biome format --write .",
     "start": "nest start",
     "start:dev": "nodemon",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
-    "lint": "biome check",
+    "lint": "oxlint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

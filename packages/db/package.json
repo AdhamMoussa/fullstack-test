@@ -19,7 +19,7 @@
     "generate": "prisma generate",
     "push": "prisma db push",
     "studio": "prisma studio --hostname 0.0.0.0 --browser none",
-    "lint": "biome check",
+    "lint": "oxlint src tsup.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
