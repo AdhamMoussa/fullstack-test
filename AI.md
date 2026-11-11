@@ -38,6 +38,9 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
   the manual browser flow (signup, reload, sign-out, sign-in, forgot/reset) through
   Chrome DevTools, checking cookie flags and browser storage, and the final README
   pass.
+- The GitHub Actions workflow (`.github/workflows/ci.yml`): the `:inner` Turbo
+  scripts, the Mongo service started from `compose.yaml`, the directConnection test
+  URIs, and the schema push to the test database.
 
 I made the decisions below, reviewed the generated output, and corrected the parts
 that did not match the architecture or product requirements.

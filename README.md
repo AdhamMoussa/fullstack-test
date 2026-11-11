@@ -1,5 +1,7 @@
 # Auth Assessment
 
+[![CI](https://github.com/AdhamMoussa/fullstack-test/actions/workflows/ci.yml/badge.svg)](https://github.com/AdhamMoussa/fullstack-test/actions/workflows/ci.yml)
+
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. It implements the recruiter's assessment brief (not included in this repo).
 
 > **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, `/users/me`, structured request logging, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-up not done: production email delivery.
@@ -118,7 +120,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 22 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 22 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request.
 
 ## Environment variables
 

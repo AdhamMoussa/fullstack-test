@@ -292,6 +292,21 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `README.md`, `AI.md`, `AGENTS.md`, `plans/auth/changes.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — GitHub Actions CI
+
+- **Requested by:** Developer
+- **Request:** "go ahead" (proceeding with the submission-review tasks).
+- **Change:** Added `.github/workflows/ci.yml` for pushes to `main`, pull requests,
+  and manual runs. It runs the Prettier format check, lint, typecheck, build, unit
+  tests, and the API e2e suite, starting only the `mongo` service from `compose.yaml`
+  and using `127.0.0.1` + `directConnection=true` URIs. `README.md` gains a CI badge
+  and a note in the Tests section.
+- **Why:** CI/CD is a scored bonus item, and it catches regressions on push.
+- **Impact:** New workflow and README badge; no app or product changes.
+- **Files:** `.github/workflows/ci.yml`, `README.md`, `AGENTS.md`, `AI.md`,
+  `plans/auth/changes.md`.
+- **Status:** implemented (pending first run).
+
 ## Entry template
 
 ```markdown
