@@ -1,0 +1,102 @@
+# Production-like stack: built images, no bind mounts, no dev tooling.
+# The project name keeps it separate from the dev stack in compose.yaml, so both can
+# run at the same time (dev ports 3000/5173, these 3001/8080/8025).
+name: assessment-prod
+
+services:
+  mongo:
+    # 7.0, not 8.x: MongoDB 8's TCMalloc crashes on Linux kernel 6.19+ (SERVER-121912).
+    image: mongo:7.0
+    hostname: mongo
+    restart: unless-stopped
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval "
+          try { rs.status().ok } catch (e) {
+          rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] })
+          }
+          db.hello().isWritablePrimary
+          " | grep true
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+
+  # Local SMTP inbox: production requires SMTP_URL, so reset and verification links
+  # are mailed to http://localhost:8025 instead of being written to the logs.
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          # Mailpit's SMTP has no TLS, and the API's mail transport only relaxes
+          # STARTTLS for loopback hosts (it stays `required` elsewhere). Docker DNS
+          # can serve a `*.localhost` name, which the transport treats as loopback;
+          # see SMTP_URL below. Publishing never uses this name.
+          - mailpit.localhost
+    ports:
+      - '127.0.0.1:8025:8025'
+
+  # One-off: the schema and its unique indexes must exist before the API starts.
+  schema:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.prod
+      target: build
+    restart: 'no'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: 'mongodb://mongo:27017/assessment?replicaSet=rs0'
+      # One-off `pnpm run` in a container: never let pnpm reinstall dependencies.
+      pnpm_config_verify_deps_before_run: 'false'
+    command: ['pnpm', '--filter', '@repo/db', 'push']
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.prod
+    restart: unless-stopped
+    depends_on:
+      schema:
+        condition: service_completed_successfully
+      mongo:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      MONGODB_URI: 'mongodb://mongo:27017/assessment?replicaSet=rs0'
+      WEB_ORIGIN: 'http://localhost:8080'
+      APP_URL: 'http://localhost:8080'
+      SMTP_URL: 'smtp://mailpit.localhost:1025'
+      MAIL_FROM: 'Auth Assessment <no-reply@localhost>'
+      # Local plain HTTP only: Safari drops Secure cookies over http://localhost.
+      # A real deployment serves HTTPS and leaves this unset, so the cookie is
+      # `__Host-sid; Secure`.
+      SESSION_COOKIE_SECURE: 'false'
+    ports:
+      - '127.0.0.1:3001:3000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.prod
+      args:
+        # Baked into the bundle: the browser calls the API on this origin.
+        VITE_API_URL: 'http://localhost:3001'
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:8080:8080'
+
+volumes:
+  mongo_data:

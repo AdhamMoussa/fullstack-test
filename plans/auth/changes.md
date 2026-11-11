@@ -449,6 +449,43 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/{plan,tasks,changes}.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Production Docker setup
+
+- **Requested by:** Developer
+- **Request:** "where's the production Docker setup?", then chose "Images + prod
+  compose + CI".
+- **Change:** Added production images for both apps and a local production-like
+  stack:
+  - `apps/api/Dockerfile.prod`: multi-stage; Turbo builds the API, then
+    `pnpm --filter @repo/api --prod deploy --legacy` produces a `node:26-bookworm-slim`
+    runtime that runs as the non-root `node` user from `dist/main.js`, with a
+    Docker healthcheck on `/health`. Its `build` stage is reused for the schema push.
+  - `apps/web/Dockerfile.prod`: Vite build with `VITE_API_URL` as a build arg, served
+    by `nginxinc/nginx-unprivileged` on 8080 from `apps/web/nginx.conf` (SPA
+    fallback, immutable `/assets` caching, gzip, security headers, `/` healthcheck).
+  - `compose.prod.yaml` (project `assessment-prod`): mongo 7.0 replica set, Mailpit
+    SMTP inbox, a one-off `schema` push, the API on 3001, the web app on 8080.
+  - A `Production images` CI job that builds the stack, waits for its healthchecks,
+    and smoke-tests `/health`, the SPA shell and `/signin` fallback, and `/docs` 404.
+  - `files` fields in `apps/api`, `packages/db`, and `packages/contract` so legacy
+    deploy ships `dist` (and the generated Prisma client); `.dockerignore` additions
+    for local-only files.
+- **Why:** The repo only had dev Dockerfiles, so there was no way to run or smoke-test
+  the built apps, and legacy deploy silently drops `dist` and the generated Prisma
+  client without `files` fields.
+- **Impact:** New files `apps/api/Dockerfile.prod`, `apps/web/Dockerfile.prod`,
+  `apps/web/nginx.conf`, `compose.prod.yaml`; new CI job; `.dockerignore` additions;
+  `files` fields in three `package.json` files. Dev Dockerfiles, `compose.yaml`, and
+  app code are unchanged. Mailpit has no TLS, so the prod-like stack points
+  `SMTP_URL` at a `*.localhost` alias, the only host class where the mail transport
+  does not require STARTTLS.
+- **Files:** `apps/api/Dockerfile.prod`, `apps/web/Dockerfile.prod`,
+  `apps/web/nginx.conf`, `compose.prod.yaml`, `apps/api/package.json`,
+  `packages/db/package.json`, `packages/contract/package.json`, `.dockerignore`,
+  `.github/workflows/ci.yml`, `README.md`, `AGENTS.md`, `AI.md`,
+  `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

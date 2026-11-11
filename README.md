@@ -205,7 +205,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/health/health.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both API Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 29 contract tests, 23 API unit tests, and 20 web tests (Vitest + Testing Library in jsdom: signup and forgot-password forms, the redirect and link-token search schemas, email verification, the `/app` verification banner, and API error mapping) — 72 unit tests in total. The e2e command runs 42 tests across the auth, OpenAPI, store contract, and health suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, email verification and resend, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request.
+Tests run against a separate `assessment_test` database. Both API Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 29 contract tests, 23 API unit tests, and 20 web tests (Vitest + Testing Library in jsdom: signup and forgot-password forms, the redirect and link-token search schemas, email verification, the `/app` verification banner, and API error mapping) — 72 unit tests in total. The e2e command runs 42 tests across the auth, OpenAPI, store contract, and health suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, email verification and resend, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request. A second `Production images` job builds `compose.prod.yaml`, waits for both images to pass their healthchecks, and smoke-tests `/health`, the SPA shell and its `/signin` fallback, and that `/docs` returns 404 in production.
 
 ## Logging
 
@@ -259,18 +259,36 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 
 ## Deploying
 
-The Dockerfiles and `compose.yaml` are for development only; there is no production
-image.
+Two production images, both built from the workspace root:
 
-`pnpm build` produces:
+| Dockerfile                 | What it produces                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api/Dockerfile.prod` | The API on `node:26-bookworm-slim`, with production dependencies only (`pnpm deploy --prod --legacy`), running as the non-root `node` user with `CMD node dist/main.js`. It carries `apps/api/dist`, the built `@repo/contract`, and `@repo/db` with its generated Prisma client and engine: no compiler, test runner, Nest CLI, or Prisma CLI. A Docker healthcheck polls `/health`. |
+| `apps/web/Dockerfile.prod` | The Vite bundle behind `nginxinc/nginx-unprivileged` (non-root, port 8080): SPA fallback to `index.html`, one-year immutable caching for fingerprinted `/assets/`, gzip, and `nosniff`/`no-referrer`/`DENY` security headers. A Docker healthcheck fetches `/`.                                                                                                                       |
 
-- `apps/api/dist` — run it with `NODE_ENV=production node apps/api/dist/main.js` from
-  an installed workspace.
-- `apps/web/dist` — static files; serve them with an SPA fallback to `index.html`.
+Both are multi-stage: dependencies come from the lockfile (`pnpm fetch`), Turbo builds the shared packages before the app, and the runtime stage starts from a clean base. The web build bakes `VITE_API_URL` in at build time, so it is a build arg, not a runtime variable:
+
+```bash
+docker build -f apps/api/Dockerfile.prod -t auth-api .
+docker build -f apps/web/Dockerfile.prod --build-arg VITE_API_URL=https://api.example.com -t auth-web .
+```
+
+`compose.prod.yaml` runs both images locally with production settings: MongoDB 7.0 as a replica set, Mailpit as the SMTP inbox, a one-off `schema` container that pushes the Prisma schema before the API starts, the API on http://localhost:3001, and the web app on http://localhost:8080. Its Compose project is `assessment-prod`, so it can run alongside the dev stack (`pnpm dev`) without sharing containers, volumes, or ports.
+
+```bash
+docker compose -f compose.prod.yaml up --build
+docker compose -f compose.prod.yaml down       # add -v to delete its MongoDB data
+```
+
+- App: http://localhost:8080
+- API health: http://localhost:3001/health
+- Mailpit: http://localhost:8025. Reset and verification emails land there, not in the logs.
+
+`compose.prod.yaml` sets `SESSION_COOKIE_SECURE=false`, because it serves plain HTTP on localhost and Safari drops `Secure` cookies there. A real deployment serves HTTPS and leaves it unset, keeping the default `__Host-sid; Secure` cookie. Mailpit has no TLS, so that stack points `SMTP_URL` at a `*.localhost` alias, the only host class where the API's mail transport does not require STARTTLS.
 
 Required production environment:
 
-- `NODE_ENV=production` (also disables `/docs`).
+- `NODE_ENV=production` (the API image sets it, and it disables `/docs`).
 - `MONGODB_URI`, pointing at a MongoDB replica set, 7.0 or newer: Prisma needs
   transactions, so a standalone server will not do (Atlas qualifies). On
   self-managed Linux hosts with kernel 6.19+, MongoDB 8 cannot start
@@ -282,8 +300,9 @@ Required production environment:
 - Leave `SESSION_COOKIE_SECURE` unset or `true`.
 - `VITE_API_URL` at web build time: the build fails without it.
 
-Run `MONGODB_URI=… pnpm --filter @repo/db push` against the production database once
-before the first start, so the unique email index and the auth collections exist.
+Push the schema once before the first start, so the unique email index and the auth
+collections exist. `compose.prod.yaml` does this with its `schema` service; anywhere
+else run `MONGODB_URI=… pnpm --filter @repo/db push`.
 
 - Serve both apps over HTTPS: the `__Host-sid` cookie is `Secure`.
 - Keep the web app and the API same-site (for example `app.example.com` and
@@ -291,6 +310,8 @@ before the first start, so the unique email index and the auth collections exist
 - Behind a reverse proxy or load balancer, the logged client IP is the proxy's until
   Express `trust proxy` is configured in `apps/api/src/main.ts`.
 - Logs are JSON on stdout, for the platform to collect.
+- Follow-up: the web image sends no Content-Security-Policy. The API origin varies per
+  deployment, so `connect-src` would have to be templated at deploy time.
 
 ## Troubleshooting
 

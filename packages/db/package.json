@@ -11,6 +11,10 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "generated"
+  ],
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch",

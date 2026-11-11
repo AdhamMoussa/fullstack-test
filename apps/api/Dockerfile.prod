@@ -1,0 +1,47 @@
+# Production image for @repo/api: a built, dependency-complete runtime with no
+# toolchain. `compose.prod.yaml` also reuses the `build` stage to push the schema.
+FROM node:26-bookworm-slim AS build
+
+# openssl: Prisma's engine links against libssl 3.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install -g pnpm@11.0.5
+
+WORKDIR /app
+
+# Download dependencies from the lockfile alone, so this layer survives source edits.
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch
+
+COPY . .
+# CI=true: non-interactive; lets pnpm relink the store `pnpm fetch` created.
+RUN CI=true pnpm install --offline --frozen-lockfile
+# Builds @repo/contract and @repo/db first, then the API (`nest build`). The dummy
+# URI only lets Prisma load the schema for `generate`; nothing connects to it.
+RUN MONGODB_URI="mongodb://localhost:27017/assessment" pnpm exec turbo run build --filter=@repo/api
+# Legacy deploy: copies each workspace package by its `files` field (dist, and
+# `generated` for @repo/db) and installs production dependencies only.
+RUN pnpm --filter @repo/api --prod deploy --legacy /prod/api
+
+FROM node:26-bookworm-slim AS runtime
+
+# openssl: the Prisma query engine links against libssl 3.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=build --chown=node:node /prod/api ./
+
+ENV NODE_ENV=production
+
+USER node
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
+CMD ["node", "dist/main.js"]

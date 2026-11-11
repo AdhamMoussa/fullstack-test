@@ -10,3 +10,6 @@ packages/db/generated
 .env.*
 !.env.example
 .DS_Store
+# Local-only files: never needed by a build.
+Full_Stack_Test_Task.pdf
+*.tmp.md

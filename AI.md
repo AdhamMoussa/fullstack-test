@@ -49,6 +49,12 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
   wiring, the `autoCodeSplitting` config, and the first web tests (Vitest + Testing
   Library + jsdom). The developer asked for the polish group; the specific choices
   were AI proposals.
+- The production Docker setup: the multi-stage `apps/api/Dockerfile.prod`
+  (`pnpm deploy --prod --legacy` into a non-root runtime), the
+  `apps/web/Dockerfile.prod` nginx-unprivileged image with `apps/web/nginx.conf`
+  (SPA fallback, immutable asset caching, gzip, security headers),
+  `compose.prod.yaml` with its schema-push and Mailpit services, and the
+  "Production images" CI job that builds the stack and smoke-tests it.
 
 I made the decisions below, reviewed the generated output, and corrected the parts
 that did not match the architecture or product requirements.
@@ -181,6 +187,11 @@ one session to the next.
   `ConsoleLogger` instead of pino/winston, the logged field set, the
   `X-Request-Id` validation/reuse, and the auth-audit field allowlist were AI
   proposals.
+- **Production Docker setup.** I asked "where's the production Docker setup?" and chose
+  images plus a local production-like Compose stack and a CI smoke test. The specific
+  choices were AI proposals: `pnpm deploy --prod --legacy` and the `files` fields it
+  needs, the non-root Node runtime, nginx-unprivileged for the web app, Mailpit as the
+  local SMTP inbox, and the 3001/8080/8025 ports.
 
 ## Architecture and stack
 

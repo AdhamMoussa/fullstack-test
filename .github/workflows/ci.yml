@@ -88,3 +88,41 @@ jobs:
       - name: Dump MongoDB logs
         if: failure()
         run: docker logs mongo
+
+  docker:
+    name: Production images
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Builds both production images and waits for the API and web healthchecks,
+      # which also proves the Mailpit/schema/Mongo wiring in compose.prod.yaml.
+      - name: Build and start the production stack
+        run: docker compose -f compose.prod.yaml up --detach --build --wait --wait-timeout 300
+
+      - name: Smoke test the images
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:3001/health -o /tmp/health.json
+          cat /tmp/health.json
+          grep -q '"ok"' /tmp/health.json
+
+          curl -fsS http://localhost:8080/ -o /tmp/index.html
+          grep -q '<div id="root">' /tmp/index.html
+
+          # SPA fallback: a client route returns the same shell as "/".
+          curl -fsS http://localhost:8080/signin -o /tmp/signin.html
+          cmp /tmp/index.html /tmp/signin.html
+
+          # Swagger is disabled when NODE_ENV=production.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/docs)" = 404
+
+      - name: Show container logs
+        if: failure()
+        run: docker compose -f compose.prod.yaml logs
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f compose.prod.yaml down -v
