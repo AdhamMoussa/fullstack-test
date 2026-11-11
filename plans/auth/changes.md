@@ -343,6 +343,28 @@ The initial plan was recorded on 2026-11-11 with these decisions:
 - **Files:** `.github/workflows/ci.yml`, `AGENTS.md`, `plans/auth/changes.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — MongoDB 7.0 for dev and CI
+
+- **Requested by:** Developer
+- **Request:** The CI log still showed "MongoDB did not become a writable primary
+  within 60 s" after the `ubuntu-24.04` pin. GitHub's `ubuntu-latest` and
+  `ubuntu-24.04` runners are now both on Linux kernel 6.19+, so the pin did not
+  help; the developer chose "7.0 for dev and CI".
+- **Change:** `compose.yaml` and `.github/workflows/ci.yml` now use `mongo:7.0`.
+  The runner pin is reverted to `runs-on: ubuntu-latest` and its comment is
+  removed. `README.md` (services table, Deploying notes, Troubleshooting) and the
+  `AGENTS.md` CI bullet describe 7.0 and the reason.
+- **Why:** MongoDB 8.x's TCMalloc crashes on kernel 6.19+ (SERVER-121912). GitHub's
+  24.04 runners have that kernel too, so pinning the runner didn't help. Reviewers
+  on recent Linux kernels would hit the same crash in `pnpm dev`.
+- **Impact:** The local Mongo volume created by 8.0 must be recreated
+  (`docker compose down -v`; dev data is throwaway). No app code changes; Prisma 6
+  supports MongoDB 7.0. This entry supersedes "CI runner pinned to Ubuntu 24.04"
+  above; that entry stays as written.
+- **Files:** `compose.yaml`, `.github/workflows/ci.yml`, `README.md`, `AGENTS.md`,
+  `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

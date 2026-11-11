@@ -38,7 +38,7 @@ No `.env` file is needed: `compose.yaml` provides development defaults.
 
 | Service    | Port (localhost only) | What it does                                                                                                                                                                                         |
 | ---------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mongo`    | 27017                 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions)                                                                                                                                 |
+| `mongo`    | 27017                 | MongoDB 7.0, single-node replica set `rs0` (Prisma needs transactions; MongoDB 8 crashes on Linux kernel 6.19+)                                                                                      |
 | `db`       | 5555 (Prisma Studio)  | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`)                                                              |
 | `contract` | —                     | Rebuilds the shared schemas/types on change (`tsup --watch`)                                                                                                                                         |
 | `web`      | 5173                  | Vite dev server with HMR for the React app                                                                                                                                                           |
@@ -246,8 +246,10 @@ image.
 Required production environment:
 
 - `NODE_ENV=production` (also disables `/docs`).
-- `MONGODB_URI`, pointing at a MongoDB replica set: Prisma needs transactions, so a
-  standalone server will not do (Atlas qualifies).
+- `MONGODB_URI`, pointing at a MongoDB replica set, 7.0 or newer: Prisma needs
+  transactions, so a standalone server will not do (Atlas qualifies). On
+  self-managed Linux hosts with kernel 6.19+, MongoDB 8 cannot start
+  (SERVER-121912), while Atlas is unaffected.
 - `WEB_ORIGIN` and `APP_URL`, both HTTPS origins.
 - `SMTP_URL`: required in production. The API refuses to start without it, so reset
   links and their tokens never reach the logs.
@@ -271,3 +273,4 @@ before the first start, so the unique email index and the auth collections exist
 - **`pnpm build`/`test` says the service isn't running.** Start the stack with `pnpm dev` first.
 - **The API doesn't reflect a schema change.** Run `pnpm db:generate` (and `pnpm db:push` for new indexes).
 - **Forgot-password link:** in Docker dev the API logs the reset URL; check `docker compose logs api` (production email delivery is not wired yet).
+- **Mongo exits right after starting on Linux.** MongoDB 8 crashes on kernel 6.19+; this repo uses `mongo:7.0`. If you upgraded from an older checkout, run `docker compose down -v` once (the 8.0 data files can't be opened by 7.0).

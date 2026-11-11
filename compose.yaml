@@ -1,6 +1,7 @@
 services:
   mongo:
-    image: mongo:8.0
+    # 7.0, not 8.x: MongoDB 8's TCMalloc crashes on Linux kernel 6.19+ (SERVER-121912).
+    image: mongo:7.0
     hostname: mongo
     restart: unless-stopped
     command: ['--replSet', 'rs0', '--bind_ip_all']

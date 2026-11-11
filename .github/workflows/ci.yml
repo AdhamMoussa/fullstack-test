@@ -19,8 +19,7 @@ concurrency:
 jobs:
   checks:
     name: Checks
-    # MongoDB 8.x cannot start on Linux kernel 6.19+ (Ubuntu 26 runners); see https://jira.mongodb.org/browse/SERVER-121912
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       MONGODB_URI: mongodb://127.0.0.1:27017/assessment?replicaSet=rs0&directConnection=true
@@ -48,9 +47,10 @@ jobs:
 
       # CI starts Mongo itself instead of using the dev Compose healthcheck. The
       # member host `127.0.0.1:27017` works both inside the container and from the runner.
+      # mongo:7.0 to match compose.yaml; MongoDB 8 cannot start on the runner's kernel (SERVER-121912).
       - name: Start MongoDB (single-node replica set)
         run: |
-          docker run --detach --name mongo --publish 127.0.0.1:27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          docker run --detach --name mongo --publish 127.0.0.1:27017:27017 mongo:7.0 --replSet rs0 --bind_ip_all
           for attempt in $(seq 1 30); do
             if docker exec mongo mongosh --quiet --eval "
               try { rs.status().ok } catch (error) {
