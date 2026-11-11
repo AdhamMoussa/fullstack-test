@@ -9,6 +9,7 @@ import { resetAuthState } from '../lib/auth-session'
 import { SignupPage } from './signup'
 
 vi.mock('../lib/auth.api', () => ({
+  fetchCurrentUser: vi.fn().mockResolvedValue(null),
   signUp: vi.fn().mockResolvedValue({
     id: '2f8f8a0c9b1e4d6f8a0b2c4d',
     email: 'new.user@example.com',

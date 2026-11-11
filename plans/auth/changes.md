@@ -422,6 +422,33 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `README.md`, `AGENTS.md`, `AI.md`, `plans/auth/{plan,tasks,changes}.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Link-based email verification
+
+- **Requested by:** Developer
+- **Request:** “is it easy to add email verification with OTP?”, then “ok implement
+  the link-based flow with banner”.
+- **Change:** Added link-based email verification on top of the package's
+  `EmailVerificationService`: signup sends a 24-hour single-use link without blocking
+  the response; public `POST /auth/verify-email` consumes the token; protected
+  `POST /users/me/email-verification` resends it. The web app gains a top-level
+  `/verify-email` page that POSTs on an explicit click and a non-blocking banner on
+  `/app` with "Send a new link". Contract schema, API e2e, web tests, and docs were
+  updated.
+- **Why:** OTP codes are not what the package provides: it issues hashed single-use
+  link tokens, while 6-digit codes would need custom storage and attempt limiting.
+  Link-based verification reuses the tested package flow, and the banner keeps
+  verification non-blocking for the assessment scope.
+- **Impact:** New contract input and endpoints, a new top-level route outside the auth
+  guards, a banner for unverified users, extra API e2e and web tests, and docs. No new
+  DB model; verification tokens use the existing `auth_email_tokens` store.
+- **Files:** `packages/contract/src/{auth,spec}.ts`,
+  `apps/api/src/{auth,users}/**`, `apps/api/src/app.module.ts`,
+  `apps/api/test/{auth,openapi}.e2e-spec.ts`, `apps/web/src/routes/verify-email.tsx`,
+  `apps/web/src/modules/auth/**`, `apps/web/src/modules/core/pages/application-page.tsx`,
+  `apps/web/src/test/render-with-router.tsx`, `README.md`, `AGENTS.md`, `AI.md`,
+  `plans/auth/{plan,tasks,changes}.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

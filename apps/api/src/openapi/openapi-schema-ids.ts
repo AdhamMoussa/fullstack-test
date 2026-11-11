@@ -6,6 +6,7 @@ import {
   signInInputSchema,
   signUpInputSchema,
   userSchema,
+  verifyEmailInputSchema,
 } from '@repo/contract'
 import { z } from 'zod'
 
@@ -30,6 +31,12 @@ const contractSchemasWithIds = [
     id: 'ResetPasswordInput',
     description:
       'Reset request body with the single-use token and the new password.',
+  },
+  {
+    schema: verifyEmailInputSchema,
+    id: 'VerifyEmailInput',
+    description:
+      'Email-verification request body with the single-use token from the link.',
   },
   {
     schema: userSchema,

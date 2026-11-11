@@ -4,7 +4,7 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. It implements the recruiter's assessment brief (not included in this repo).
 
-> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, `/users/me`, structured request logging, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-up not done: production email delivery.
+> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, link-based email verification with a resend endpoint, `/users/me`, structured request logging, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, email verification, and a protected `/app` with logout. Optional follow-up not done: production email delivery.
 
 ## Layout
 
@@ -46,13 +46,14 @@ No `.env` file is needed: `compose.yaml` provides development defaults.
 
 ## Web app
 
-| Route                     | Access     | Behavior                                                      |
-| ------------------------- | ---------- | ------------------------------------------------------------- |
-| `/signup`                 | signed out | email, name, password, confirm                                |
-| `/signin`                 | signed out | email, password; link to forgot password; honors `?redirect=` |
-| `/forgot-password`        | signed out | always shows the same "check your email" message              |
-| `/reset-password?token=…` | signed out | new password + confirmation; signs in                         |
-| `/app`                    | signed in  | `Welcome to the application.`, name/email, log out            |
+| Route                     | Access     | Behavior                                                                                                          |
+| ------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/signup`                 | signed out | email, name, password, confirm                                                                                    |
+| `/signin`                 | signed out | email, password; link to forgot password; honors `?redirect=`                                                     |
+| `/forgot-password`        | signed out | always shows the same "check your email" message                                                                  |
+| `/reset-password?token=…` | signed out | new password + confirmation; signs in                                                                             |
+| `/verify-email?token=…`   | anyone     | "Verify my email" posts the token; signed-in users see a banner on `/app` until verified (with "Send a new link") |
+| `/app`                    | signed in  | `Welcome to the application.`, name/email, log out                                                                |
 
 `/` and unknown paths redirect to `/app`.
 
@@ -66,22 +67,24 @@ visit an auth page go to `/app`.
 
 ## API
 
-| Method | Path                    | Auth                      | Status                                                                           |
-| ------ | ----------------------- | ------------------------- | -------------------------------------------------------------------------------- |
-| `GET`  | `/health`               | none                      | 200 `{ "status": "ok" }`; 503 when MongoDB does not answer a ping                |
-| `POST` | `/auth/signup`          | none                      | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
-| `POST` | `/auth/signin`          | none                      | 200 `{ user }` + session cookie; 401 bad credentials                             |
-| `POST` | `/auth/forgot-password` | none                      | 202 generic empty response for known and unknown emails; 400 invalid input       |
-| `POST` | `/auth/reset-password`  | none                      | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
-| `POST` | `/auth/sign-out`        | session cookie (optional) | 204; ends the current session and clears the cookie (204 even without a session) |
-| `GET`  | `/users/me`             | session cookie            | 200 with the public user; 401 without a valid session                            |
+| Method | Path                           | Auth                      | Status                                                                           |
+| ------ | ------------------------------ | ------------------------- | -------------------------------------------------------------------------------- |
+| `GET`  | `/health`                      | none                      | 200 `{ "status": "ok" }`; 503 when MongoDB does not answer a ping                |
+| `POST` | `/auth/signup`                 | none                      | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
+| `POST` | `/auth/signin`                 | none                      | 200 `{ user }` + session cookie; 401 bad credentials                             |
+| `POST` | `/auth/forgot-password`        | none                      | 202 generic empty response for known and unknown emails; 400 invalid input       |
+| `POST` | `/auth/reset-password`         | none                      | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
+| `POST` | `/auth/verify-email`           | none                      | 204; 400 for an invalid, expired, or used link                                   |
+| `POST` | `/auth/sign-out`               | session cookie (optional) | 204; ends the current session and clears the cookie (204 even without a session) |
+| `GET`  | `/users/me`                    | session cookie            | 200 with the public user; 401 without a valid session                            |
+| `POST` | `/users/me/email-verification` | session cookie            | 202; sends a new link unless already verified; 401 without a session             |
 
 Errors use the contract's `ApiError`: `{ statusCode, message, error }`, where `message` is a string or, for validation errors, an array like `["email: Invalid email address"]`. Status codes: 400 validation, 401 bad credentials/no session, 403 untrusted origin, 409 duplicate email.
 
 The contract `User` includes `id`, `email`, `name`, `emailVerified`, and ISO
-`createdAt`/`updatedAt` timestamps. Passwords, hashes, session tokens, and reset
-tokens never appear in responses. The reset URL is logged in development; set `SMTP_URL` to send
-real mail.
+`createdAt`/`updatedAt` timestamps. Passwords, hashes, session tokens, and reset or
+verification tokens never appear in responses. The reset and verification URLs are
+logged in development; set `SMTP_URL` to send real mail.
 
 ## API docs
 
@@ -96,7 +99,7 @@ UI first: the browser stores the httpOnly session cookie (`sid` in Docker dev,
 `__Host-sid` over HTTPS), and "Try it out" on
 `GET /users/me` then works.
 
-## Sessions and password reset
+## Sessions, password reset, and email verification
 
 Auth uses `@nestjs/authentication` server-side sessions in an httpOnly cookie.
 There are no JWT or localStorage secrets. Signup returns 409 when an email is already registered. That tells the visitor an account exists, unlike forgot-password; it is the usual signup trade-off, kept deliberately so the form can send them to sign in.
@@ -123,6 +126,17 @@ Reset flow:
 4. The API marks the token used, updates the password, marks the email verified,
    signs the user in, and the app goes to `/app`.
 5. Reused, expired, or invalid links return 400 and the page offers a new link.
+
+Email verification flow:
+
+- Signup sends a 24-hour single-use link (`APP_URL/verify-email?token=…`) and does
+  not wait for the mail. The token is stored hashed in `auth_email_tokens`; in dev
+  the link is logged: `docker compose logs api | grep verify-email`.
+- `/verify-email` posts the token only when the visitor clicks "Verify my email",
+  so mail scanners and link previews cannot spend it.
+- Unverified users can still use the app and see a banner on `/app` with "Send a
+  new link".
+- Resetting a password also marks the address verified.
 
 ## Services
 
@@ -176,6 +190,7 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 - `signInInputSchema` / `SignInInput` — email and password
 - `forgotPasswordInputSchema` / `ForgotPasswordInput` — email
 - `resetPasswordInputSchema` / `ResetPasswordInput` — token, new password, and matching confirmation
+- `verifyEmailInputSchema` / `VerifyEmailInput` — the verification link token
 - `userSchema` / `User` — the public user shape (no password hash)
 - `authResponseSchema` / `AuthResponse` — `{ user }` only; the session is the httpOnly cookie
 - `apiErrorSchema` / `ApiError` — shared error response
@@ -190,7 +205,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/health/health.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both API Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 25 contract tests, 23 API unit tests, and 14 web tests (Vitest + Testing Library in jsdom: signup and forgot-password forms, the redirect search schema, and API error mapping) — 62 unit tests in total. The e2e command runs 37 tests across the auth, OpenAPI, store contract, and health suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request.
+Tests run against a separate `assessment_test` database. Both API Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 29 contract tests, 23 API unit tests, and 20 web tests (Vitest + Testing Library in jsdom: signup and forgot-password forms, the redirect and link-token search schemas, email verification, the `/app` verification banner, and API error mapping) — 72 unit tests in total. The e2e command runs 42 tests across the auth, OpenAPI, store contract, and health suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, email verification and resend, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request.
 
 ## Logging
 
@@ -234,7 +249,7 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | `NODE_ENV`              | api (docs toggle)              | `development` (the docs are disabled in `production`)  |
 | `PORT`                  | api                            | `3000`                                                 |
 | `WEB_ORIGIN`            | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
-| `APP_URL`               | api (reset links)              | `http://localhost:5173`                                |
+| `APP_URL`               | api (reset/verification links) | `http://localhost:5173`                                |
 | `MAIL_FROM`             | api (mail sender)              | `Auth Assessment <no-reply@localhost>`                 |
 | `SESSION_ABSOLUTE_TTL`  | api                            | `7d`                                                   |
 | `SESSION_IDLE_TTL`      | api                            | `1d`                                                   |

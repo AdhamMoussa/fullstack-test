@@ -57,7 +57,12 @@ export const resetPasswordInputSchema = z
     path: ['confirmPassword'],
   })
 
+export const verifyEmailInputSchema = z.strictObject({
+  token: z.string().trim().min(1, 'Verification token is required.'),
+})
+
 export type SignUpInput = z.infer<typeof signUpInputSchema>
 export type SignInInput = z.infer<typeof signInInputSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>
+export type VerifyEmailInput = z.infer<typeof verifyEmailInputSchema>

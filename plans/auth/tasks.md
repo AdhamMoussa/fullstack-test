@@ -171,6 +171,21 @@ current.
       `/docs/json`).
 - [x] Optional: add structured request logging.
 
+## 8. Email verification
+
+- [x] Add the `verifyEmailInputSchema`/`VerifyEmailInput` contract schema with tests.
+- [x] Signup sends a 24-hour single-use verification link without blocking the
+      response; mail failures are logged and never fail signup.
+- [x] Add public `POST /auth/verify-email` (204; 400 invalid, expired, or used token).
+- [x] Add protected `POST /users/me/email-verification` (202; no-op when already
+      verified; 401 without a session).
+- [x] Cover verification and resend in the API e2e suite.
+- [x] Build the `/verify-email` page as a top-level route that posts the token only on
+      an explicit click (no auto-submit).
+- [x] Show the `/app` verification banner with "Send a new link" for unverified users.
+- [x] Add web tests for the verification form and the resend banner.
+- [x] Document the flow in `README.md`, `AGENTS.md`, and the plans.
+
 ## Definition of done
 
 - [x] All acceptance criteria in `plan.md` are met.

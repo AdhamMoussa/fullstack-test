@@ -33,6 +33,7 @@ const contractSchemaIds = [
   'SignInInput',
   'ForgotPasswordInput',
   'ResetPasswordInput',
+  'VerifyEmailInput',
   'User',
   'AuthResponse',
   'ApiError',
@@ -76,8 +77,10 @@ describe('OpenAPI (e2e)', () => {
         '/auth/signin',
         '/auth/sign-out',
         '/auth/signup',
+        '/auth/verify-email',
         '/health',
         '/users/me',
+        '/users/me/email-verification',
       ].sort(),
     )
     expect(document.paths).not.toHaveProperty('/')

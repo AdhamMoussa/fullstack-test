@@ -41,8 +41,8 @@ import { sessionCookieName } from './config/session-cookie.js'
             }),
           },
           passwordReset: { url: `${appUrl}/reset-password` },
-          // Password reset marks the account's address verified through this
-          // handler. The app exposes no separate verification flow.
+          // Signup and the resend endpoint send verification links; the page
+          // POSTs the token back to `/auth/verify-email`.
           emailVerification: { url: `${appUrl}/verify-email` },
         }
       },

@@ -5,6 +5,7 @@ import type {
   SignInInput,
   SignUpInput,
   User,
+  VerifyEmailInput,
 } from '@repo/contract'
 
 import { api } from '../../core/lib/api'
@@ -48,6 +49,14 @@ export async function resetPassword(
   )
 
   return response.data.user
+}
+
+export async function verifyEmail(input: VerifyEmailInput): Promise<void> {
+  await api.post('/auth/verify-email', input)
+}
+
+export async function sendVerificationEmail(): Promise<void> {
+  await api.post('/users/me/email-verification')
 }
 
 export async function signOut(): Promise<void> {

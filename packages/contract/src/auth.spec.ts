@@ -5,6 +5,7 @@ import {
   resetPasswordInputSchema,
   signInInputSchema,
   signUpInputSchema,
+  verifyEmailInputSchema,
 } from './auth.js'
 
 const valid = {
@@ -234,5 +235,39 @@ describe('resetPasswordInputSchema', () => {
         message: 'Password must be at most 128 characters.',
       }),
     )
+  })
+})
+
+describe('verifyEmailInputSchema', () => {
+  it('accepts a token and trims it', () => {
+    expect(verifyEmailInputSchema.parse({ token: '  verify-token  ' })).toEqual(
+      {
+        token: 'verify-token',
+      },
+    )
+  })
+
+  it.each([
+    ['an empty token', ''],
+    ['a whitespace-only token', '   '],
+  ])('rejects %s', (_label, token) => {
+    const result = verifyEmailInputSchema.safeParse({ token })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['token'],
+        message: 'Verification token is required.',
+      }),
+    )
+  })
+
+  it('rejects unknown fields', () => {
+    expect(
+      verifyEmailInputSchema.safeParse({
+        token: 'verify-token',
+        email: 'a@b.co',
+      }).success,
+    ).toBe(false)
   })
 })

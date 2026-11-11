@@ -18,6 +18,8 @@ React forms.
 
 - Sign-up with email, name, password, and password confirmation.
 - Sign-in with email and password using a server-side session and httpOnly cookie.
+- Link-based email verification with a resend endpoint and a non-blocking banner on
+  `/app`.
 - Forgot-password and reset-password via `@nestjs/authentication`'s password-reset
   service.
 - A users module owning user-related endpoints, including `GET /users/me`.
@@ -31,8 +33,7 @@ React forms.
 
 ### Out of scope
 
-- Refresh tokens, two-factor authentication, magic links, Google/OIDC, email
-  verification, roles.
+- Refresh tokens, two-factor authentication, magic links, Google/OIDC, roles.
 - Production email delivery. Development logs the reset link via the package's
   mail transport; a real provider is a follow-up.
 - Multi-device session management UI.
@@ -42,7 +43,7 @@ React forms.
 - `packages/contract` exports signup/signin/forgot/reset input schemas,
   `userSchema`/`User` (with `emailVerified`), token-free
   `authResponseSchema`/`AuthResponse`, and `apiErrorSchema`/`ApiError`. Contract
-  tests pass (25).
+  tests pass (29).
 - `packages/db` has `User` (`emailVerified` included), `AuthSession`, and
   `AuthEmailToken`; the schema has been generated and pushed to the dev and test
   databases. Store user ids are plain strings, so the package contract's opaque
@@ -60,11 +61,16 @@ React forms.
   auth routes and `GET /health` are `@Public()`.
 - Password reset uses the package's `PasswordResetHandler`; the app also registers an
   `EmailVerificationHandler` so the package can mark the reset address verified.
-  No user-facing email-verification endpoint exists.
+- Email verification is link-based through the package's `EmailVerificationService`:
+  signup sends a 24-hour single-use link without blocking the response,
+  `POST /auth/verify-email` consumes it, and the protected
+  `POST /users/me/email-verification` resends it. `/verify-email` POSTs only on an
+  explicit click, and `/app` shows a non-blocking banner until the address is
+  verified.
 - Task #1 (dependencies, contract, schema), Task #2 (authentication store),
   Task #3 (API foundation), and Task #4 (API e2e tests) are complete. The e2e suite
-  covers auth, users, password reset, CSRF, routing, health, and the OpenAPI
-  document, and also runs the store contract: 37 tests passing.
+  covers auth, users, password reset, email verification, CSRF, routing, health, and
+  the OpenAPI document, and also runs the store contract: 42 tests passing.
 - API docs are served at `/docs` (Swagger UI) and `/docs/json` unless
   `NODE_ENV=production`. They are set up in `apps/api/src/openapi/setup-openapi.ts`;
   request bodies come from `@Body({ schema })` and responses from `standardSchema`
@@ -171,14 +177,16 @@ React forms.
 
 ## API design
 
-| Method | Path                    | Auth           | Success                             | Errors                                         |
-| ------ | ----------------------- | -------------- | ----------------------------------- | ---------------------------------------------- |
-| `POST` | `/auth/signup`          | public         | 201 `{ user }`, sets session cookie | 400 validation, 409 duplicate email            |
-| `POST` | `/auth/signin`          | public         | 200 `{ user }`, sets session cookie | 400 validation, 401 bad credentials            |
-| `POST` | `/auth/forgot-password` | public         | 202, no body                        | 400 validation                                 |
-| `POST` | `/auth/reset-password`  | public         | 200 `{ user }`, sets session cookie | 400 validation, 400 invalid/expired/used token |
-| `GET`  | `/users/me`             | session cookie | 200 `User`                          | 401 missing/invalid session                    |
-| `POST` | `/auth/sign-out`        | session cookie | 204, clears cookie                  | 401/204 when already signed out                |
+| Method | Path                           | Auth           | Success                                     | Errors                                         |
+| ------ | ------------------------------ | -------------- | ------------------------------------------- | ---------------------------------------------- |
+| `POST` | `/auth/signup`                 | public         | 201 `{ user }`, sets session cookie         | 400 validation, 409 duplicate email            |
+| `POST` | `/auth/signin`                 | public         | 200 `{ user }`, sets session cookie         | 400 validation, 401 bad credentials            |
+| `POST` | `/auth/forgot-password`        | public         | 202, no body                                | 400 validation                                 |
+| `POST` | `/auth/reset-password`         | public         | 200 `{ user }`, sets session cookie         | 400 validation, 400 invalid/expired/used token |
+| `POST` | `/auth/verify-email`           | public         | 204, no body                                | 400 validation, 400 invalid/expired/used token |
+| `GET`  | `/users/me`                    | session cookie | 200 `User`                                  | 401 missing/invalid session                    |
+| `POST` | `/users/me/email-verification` | session cookie | 202, sends a new link (no-op when verified) | 401 missing/invalid session                    |
+| `POST` | `/auth/sign-out`               | session cookie | 204, clears cookie                          | 401/204 when already signed out                |
 
 Requests:
 
@@ -230,8 +238,10 @@ New/changed files:
 Behavior:
 
 1. Signup registers through `CredentialsService`, calls `SignInService.signIn()` to
-   set the session cookie, and returns the public user. Signup does not send an email
-   verification link; email verification is not a user-facing flow.
+   set the session cookie, and returns the public user. It also asks the package's
+   `EmailVerificationService` for a 24-hour single-use link but does not await the
+   send: a mail failure is logged and never fails signup. Unverified users are not
+   blocked from the app; `/app` shows a resend banner instead.
 2. Signin verifies the password through the timing-safe `PasswordHasher`, calls
    `SignInService.signIn()`, and returns the public user.
 3. Forgot-password calls `PasswordResetService.request(email)` and returns 202
@@ -290,9 +300,13 @@ Pages:
   string, asks for password + confirmation with `resetPasswordInputSchema`, shows a
   missing/invalid-link state, and on success calls `resetAuthState` so the guard
   goes to `/app`.
+- **Verify email** (`/verify-email?token=...`): a top-level route outside the
+  `_auth`/`_app` guards; it POSTs the token only when the visitor clicks "Verify my
+  email" and shows verified, invalid/expired, and missing-token states.
 - **Application** (`/app`): displays exactly `Welcome to the application.`, the
   user's name/email, and a logout button that calls `/auth/sign-out` then
-  `resetAuthState`; the `_app` guard redirects to `/signin`.
+  `resetAuthState`; the `_app` guard redirects to `/signin`. Unverified users also
+  see a banner with "Send a new link".
 
 Accessibility/UI: visible labels, keyboard submission, disabled submit while
 pending, and a password visibility toggle or equivalent. Keep the design simple and

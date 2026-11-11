@@ -26,6 +26,9 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
 - The auth screens: signup/signin/forgot/reset forms with the contract schemas and
   mutation hooks, server-error mapping onto the form fields, and the `/app` page
   with user details and logout.
+- The link-based email verification work: the contract input, the verify/resend
+  endpoints, the top-level `/verify-email` page that posts on an explicit click, the
+  `/app` banner with "Send a new link", and their API e2e and web tests.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - The Swagger/OpenAPI setup: document config, the cookie security scheme,
   contract-schema response decorators, API-side schema ids, and the
@@ -74,7 +77,7 @@ that did not match the architecture or product requirements.
   `useSecurityHeaders()`/`enableCsrfProtection()` instead of older examples. The
   reset flow's `markVerified` turned out to belong to the package's
   `EmailVerificationHandler`, not `PasswordResetHandler`, so the API registers a
-  verification handler even though it exposes no verification screen.
+  verification handler, which the link-based verification flow now uses.
 - Testing through the real HTTP stack with Supertest. The test client drops Secure
   cookies over HTTP, so only the test auth options disable `cookie.secure`; production
   keeps the package's `__Host-sid` default.
@@ -162,6 +165,10 @@ one session to the next.
 - **Forgot-password and reset-password flows.** I added both to the auth scope. The
   plan uses short-lived, single-use reset tokens; the development mailer logs the
   reset link because production email delivery is not part of this build.
+- **Email verification.** I asked whether OTP verification was easy. AI explained
+  that the package only supports link tokens and that 6-digit codes would need custom
+  storage and attempt limiting, so I chose link-based verification with a
+  non-blocking banner.
 - **User info belongs to a users module.** I originally asked for `/me` and then
   corrected it to `/users/me` under a dedicated `UsersModule`. `/auth/me` is removed
   from the current plan.

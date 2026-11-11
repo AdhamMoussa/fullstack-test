@@ -9,6 +9,7 @@ export const authSearchSchema = z.object({
   redirect: internalPathSchema.optional().catch(undefined),
 })
 
-export const resetPasswordSearchSchema = z.object({
+/** The optional `token` carried by reset and email-verification links. */
+export const linkTokenSearchSchema = z.object({
   token: z.string().trim().min(1).optional().catch(undefined),
 })

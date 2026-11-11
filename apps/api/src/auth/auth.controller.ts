@@ -3,10 +3,12 @@ import {
   Body,
   Controller,
   HttpCode,
+  Logger,
   Post,
   UnauthorizedException,
 } from '@nestjs/common'
 import {
+  EmailVerificationService,
   PasswordResetService,
   Public,
   SignInService,
@@ -26,11 +28,13 @@ import {
   resetPasswordInputSchema,
   signInInputSchema,
   signUpInputSchema,
+  verifyEmailInputSchema,
   type AuthResponse,
   type ForgotPasswordInput,
   type ResetPasswordInput,
   type SignInInput,
   type SignUpInput,
+  type VerifyEmailInput,
 } from '@repo/contract'
 
 import {
@@ -47,10 +51,13 @@ import { CredentialsService } from './credentials.service.js'
 @Public()
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name)
+
   constructor(
     private readonly credentialsService: CredentialsService,
     private readonly signInService: SignInService,
     private readonly passwordResetService: PasswordResetService,
+    private readonly emailVerificationService: EmailVerificationService,
     private readonly usersRepository: UsersRepository,
   ) {}
 
@@ -76,6 +83,20 @@ export class AuthController {
     await this.signInService.signIn(registeredUser.id, {
       method: 'password',
     })
+
+    // The account and its session already exist, so a mail failure must not
+    // turn signup into an error; the user can resend from `/app`.
+    this.emailVerificationService
+      .send({ id: registeredUser.id, email: registeredUser.email })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          'Could not send the verification email after signup.',
+          {
+            userId: registeredUser.id,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        )
+      })
 
     return { user: registeredUser }
   }
@@ -108,6 +129,27 @@ export class AuthController {
     })
 
     return { user: authenticatedUser }
+  }
+
+  @Post('verify-email')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Verify an email address with a link token' })
+  @ApiNoContentResponse({ description: 'The address is verified.' })
+  @ApiErrorResponse(
+    400,
+    'Body failed the shared contract schema, or the token is invalid, expired, or already used.',
+  )
+  @ApiUntrustedOriginResponse()
+  async verifyEmail(
+    @Body({ schema: verifyEmailInputSchema }) body: VerifyEmailInput,
+  ): Promise<void> {
+    const verifiedAddress = await this.emailVerificationService.verify(
+      body.token,
+    )
+
+    if (!verifiedAddress) {
+      throw new BadRequestException('Invalid or expired verification link.')
+    }
   }
 
   @Post('forgot-password')

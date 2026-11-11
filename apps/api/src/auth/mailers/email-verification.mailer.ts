@@ -9,9 +9,9 @@ import { html, Mailer } from '@nestjs/mail'
 import { UsersRepository } from '../../users/users.repository.js'
 
 /**
- * The package's password-reset service marks an address verified through the
- * email-verification handler. The app exposes no verification flow, but this
- * keeps that reset behaviour working.
+ * Delivers the email-verification links: signup and the resend endpoint send
+ * them through `EmailVerificationService`. The package's password-reset
+ * service also marks an address verified through `markVerified()`.
  */
 @Injectable()
 export class EmailVerificationMailer extends EmailVerificationHandler {
@@ -28,10 +28,11 @@ export class EmailVerificationMailer extends EmailVerificationHandler {
     await this.mailer.send({
       to: email,
       subject: 'Verify your email address',
-      text: `Confirm your email address: ${url}`,
+      text: `Confirm your email address: ${url}\n\nThe link expires in 24 hours and works once.`,
       html: html`
         <p>Confirm your email address.</p>
         <p><a href="${url}">Verify my email</a></p>
+        <p>The link expires in 24 hours and works once.</p>
       `,
     })
   }

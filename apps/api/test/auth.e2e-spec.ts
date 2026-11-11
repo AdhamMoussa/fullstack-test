@@ -6,7 +6,11 @@ import {
   PasswordHasher,
   type AuthenticationModuleOptions,
 } from '@nestjs/authentication'
-import { InMemoryMailTransport, MailTransport } from '@nestjs/mail'
+import {
+  InMemoryMailTransport,
+  MailTransport,
+  type SentMailQuery,
+} from '@nestjs/mail'
 import { Test } from '@nestjs/testing'
 import type { User } from '@repo/contract'
 import request from 'supertest'
@@ -19,6 +23,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from 'vitest'
 
 import { AppModule } from '../src/app.module.js'
@@ -27,6 +32,8 @@ import { PrismaService } from '../src/prisma/prisma.service.js'
 const TEST_PASSWORD = 'Passw0rd!'
 const NEW_TEST_PASSWORD = 'NewPassw0rd!'
 const WRONG_PASSWORD = 'WrongPassw0rd!'
+const RESET_MAIL_SUBJECT = 'Reset your password'
+const VERIFICATION_MAIL_SUBJECT = 'Verify your email address'
 const trustedOrigin = new URL(process.env.WEB_ORIGIN ?? 'http://localhost:5173')
   .origin
 
@@ -90,23 +97,27 @@ async function deleteUsers(userIds: string[]) {
   })
 }
 
-async function requestResetMail(email: string) {
-  await request(server)
-    .post('/auth/forgot-password')
-    .send({ email })
-    .expect(202)
-
+async function waitForMail(query: SentMailQuery) {
   const deadline = Date.now() + 5_000
 
   while (Date.now() < deadline) {
-    const sentMail = mailbox.find({ to: email })
+    const sentMail = mailbox.find(query)
     if (sentMail) {
       return sentMail
     }
     await new Promise((resolve) => setTimeout(resolve, 25))
   }
 
-  throw new Error(`No password-reset mail arrived for ${email}`)
+  throw new Error('Expected a matching mail, but none arrived')
+}
+
+async function requestResetMail(email: string) {
+  await request(server)
+    .post('/auth/forgot-password')
+    .send({ email })
+    .expect(202)
+
+  return waitForMail({ to: email, subject: RESET_MAIL_SUBJECT })
 }
 
 function resetTokenFromMail(email: string): Promise<string> {
@@ -121,6 +132,23 @@ function resetTokenFromMail(email: string): Promise<string> {
 
     return resetToken
   })
+}
+
+function verificationMailFor(email: string) {
+  return waitForMail({ to: email, subject: VERIFICATION_MAIL_SUBJECT })
+}
+
+async function verificationTokenFromMail(email: string): Promise<string> {
+  const verificationMail = await verificationMailFor(email)
+  const verificationToken = verificationMail
+    .link('/verify-email')
+    .searchParams.get('token')
+
+  if (!verificationToken) {
+    throw new Error('Verification mail has no token')
+  }
+
+  return verificationToken
 }
 
 beforeAll(async () => {
@@ -172,6 +200,11 @@ afterAll(async () => {
   })
 
   await deleteUsers(leftoverUsers.map(({ id }) => id))
+  // A verification send that finished after its user was cleaned up would
+  // leave an orphan token behind.
+  await prismaService.client.authEmailToken.deleteMany({
+    where: { email: { startsWith: 'e2e-' } },
+  })
   await app.close()
 })
 
@@ -390,6 +423,111 @@ describe('Auth API (e2e)', () => {
           confirmPassword: NEW_TEST_PASSWORD,
         })
         .expect(400)
+    })
+  })
+
+  describe('email verification', () => {
+    it('sends a verification link at signup and keeps the token out of the response', async () => {
+      const agent = request.agent(server)
+      const email = uniqueEmail()
+      const { signupResponse } = await signUpUser(agent, email)
+      const verificationMail = await verificationMailFor(email)
+      const verificationLink = verificationMail.link('/verify-email')
+      const verificationToken = verificationLink.searchParams.get('token')
+
+      expect(verificationLink.origin).toBe(trustedOrigin)
+      expect(verificationLink.pathname).toBe('/verify-email')
+      expect(verificationToken).toBeTruthy()
+      expect(JSON.stringify(signupResponse.body)).not.toContain(
+        verificationToken,
+      )
+      expect(
+        verificationMail.links.filter((link) =>
+          link.includes(verificationToken ?? ''),
+        ),
+      ).toEqual([verificationLink.toString()])
+    })
+
+    it('verifies the address and reports it on the current user', async () => {
+      const agent = request.agent(server)
+      const email = uniqueEmail()
+      await signUpUser(agent, email)
+      const verificationToken = await verificationTokenFromMail(email)
+
+      await request(server)
+        .post('/auth/verify-email')
+        .send({ token: verificationToken })
+        .expect(204)
+
+      const meResponse = await agent.get('/users/me').expect(200)
+
+      expect(meResponse.body.emailVerified).toBe(true)
+    })
+
+    it('rejects a used, unknown, or missing token with 400', async () => {
+      const agent = request.agent(server)
+      const email = uniqueEmail()
+      await signUpUser(agent, email)
+      const verificationToken = await verificationTokenFromMail(email)
+
+      await request(server)
+        .post('/auth/verify-email')
+        .send({ token: verificationToken })
+        .expect(204)
+
+      await request(server)
+        .post('/auth/verify-email')
+        .send({ token: verificationToken })
+        .expect(400)
+      await request(server)
+        .post('/auth/verify-email')
+        .send({ token: 'not-a-real-token' })
+        .expect(400)
+      await request(server).post('/auth/verify-email').send({}).expect(400)
+      await request(server)
+        .post('/auth/verify-email')
+        .send({ token: '   ' })
+        .expect(400)
+    })
+
+    it('resends a link for an unverified address and stops once verified', async () => {
+      const agent = request.agent(server)
+      const email = uniqueEmail()
+      await signUpUser(agent, email)
+
+      await request(server).post('/users/me/email-verification').expect(401)
+
+      mailbox.clear()
+      await agent.post('/users/me/email-verification').expect(202)
+      const resentToken = await verificationTokenFromMail(email)
+
+      await request(server)
+        .post('/auth/verify-email')
+        .send({ token: resentToken })
+        .expect(204)
+
+      mailbox.clear()
+      await agent.post('/users/me/email-verification').expect(202)
+      mailbox.assertNotSent({ to: email })
+    })
+
+    it('still creates the account when the verification mail fails to send', async () => {
+      mailbox.failNext(new Error('smtp down'))
+
+      const agent = request.agent(server)
+      const { createdUser } = await signUpUser(agent)
+
+      expect(createdUser.emailVerified).toBe(false)
+      await agent.get('/users/me').expect(200)
+
+      // The token is stored before the transport is called, so this waits for
+      // the failing send to run while `failNext` still applies.
+      await vi.waitFor(async () => {
+        const pendingTokens = await prismaService.client.authEmailToken.count({
+          where: { userId: createdUser.id, purpose: 'email-verification' },
+        })
+        expect(pendingTokens).toBe(1)
+      })
     })
   })
 

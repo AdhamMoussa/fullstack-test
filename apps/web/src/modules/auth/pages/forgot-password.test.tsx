@@ -8,6 +8,7 @@ import { requestPasswordReset } from '../lib/auth.api'
 import { ForgotPasswordPage } from './forgot-password'
 
 vi.mock('../lib/auth.api', () => ({
+  fetchCurrentUser: vi.fn().mockResolvedValue(null),
   requestPasswordReset: vi.fn().mockResolvedValue(undefined),
 }))
 

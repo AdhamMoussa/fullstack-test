@@ -41,6 +41,11 @@ export async function renderWithRouter(ui: ReactNode) {
       }),
       createRoute({
         getParentRoute: () => rootRoute,
+        path: '/verify-email',
+        component: () => null,
+      }),
+      createRoute({
+        getParentRoute: () => rootRoute,
         path: '/app',
         component: () => null,
       }),

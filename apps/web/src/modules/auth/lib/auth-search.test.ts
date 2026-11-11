@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { authSearchSchema } from './auth-search'
+import { authSearchSchema, linkTokenSearchSchema } from './auth-search'
 
 describe('authSearchSchema', () => {
   it('keeps a same-origin redirect path', () => {
@@ -15,4 +15,17 @@ describe('authSearchSchema', () => {
       expect(authSearchSchema.parse({ redirect }).redirect).toBeUndefined()
     },
   )
+})
+
+describe('linkTokenSearchSchema', () => {
+  it('keeps a trimmed token', () => {
+    expect(linkTokenSearchSchema.parse({ token: ' abc123 ' })).toEqual({
+      token: 'abc123',
+    })
+  })
+
+  it('drops a missing or empty token', () => {
+    expect(linkTokenSearchSchema.parse({}).token).toBeUndefined()
+    expect(linkTokenSearchSchema.parse({ token: '   ' }).token).toBeUndefined()
+  })
 })
