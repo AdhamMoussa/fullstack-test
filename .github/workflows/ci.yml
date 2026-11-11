@@ -19,7 +19,8 @@ concurrency:
 jobs:
   checks:
     name: Checks
-    runs-on: ubuntu-latest
+    # MongoDB 8.x cannot start on Linux kernel 6.19+ (Ubuntu 26 runners); see https://jira.mongodb.org/browse/SERVER-121912
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       MONGODB_URI: mongodb://127.0.0.1:27017/assessment?replicaSet=rs0&directConnection=true

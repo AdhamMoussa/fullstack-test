@@ -323,6 +323,26 @@ The initial plan was recorded on 2026-11-11 with these decisions:
 - **Files:** `.github/workflows/ci.yml`, `AGENTS.md`, `AI.md`, `plans/auth/changes.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — CI runner pinned to Ubuntu 24.04
+
+- **Requested by:** Developer
+- **Request:** The developer shared the CI log showing MongoDB refusing to start:
+  "MongoDB cannot start: Linux kernel versions 6.19 and newer has a known
+  incompatibility with this version of MongoDB. See
+  https://jira.mongodb.org/browse/SERVER-121912". `ubuntu-latest` had moved to the
+  Ubuntu 26 image with a newer kernel, and related tickets show newer MongoDB
+  releases also fail on Ubuntu 26.04, so pin the runner instead of the Mongo
+  version.
+- **Change:** `.github/workflows/ci.yml` now uses `runs-on: ubuntu-24.04`, with a
+  comment above it linking SERVER-121912. Nothing else in the workflow changed.
+  `AGENTS.md` records the pin and the reason in its CI bullet.
+- **Why:** `ubuntu-latest` now runs a kernel that MongoDB 8.x cannot start on; the
+  earlier "unhealthy" Compose failure had the same root cause.
+- **Impact:** CI only; local dev is unaffected unless the Docker VM kernel reaches
+  6.19.
+- **Files:** `.github/workflows/ci.yml`, `AGENTS.md`, `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown
