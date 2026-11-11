@@ -20,6 +20,7 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
   `SessionStore`/`EmailTokenStore` implementation, and most tests.
 - The Nest auth/config/mail wiring, session provider, credentials service, and the
   auth/users endpoints.
+- The auth/users e2e suite and its cookie/in-memory-mail test harness.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
@@ -45,6 +46,9 @@ that did not match the architecture or product requirements.
   reset flow's `markVerified` turned out to belong to the package's
   `EmailVerificationHandler`, not `PasswordResetHandler`, so the API registers a
   verification handler even though it exposes no verification screen.
+- Testing through the real HTTP stack with Supertest. The test client drops Secure
+  cookies over HTTP, so only the test auth options disable `cookie.secure`; production
+  keeps the package's `__Host-sid` default.
 - Keeping `plans/auth/` with the plan, task checklist, and change log so the intent
   behind each change stays visible.
 

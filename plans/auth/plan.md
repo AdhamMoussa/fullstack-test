@@ -61,8 +61,10 @@ React forms.
 - Password reset uses the package's `PasswordResetHandler`; the app also registers an
   `EmailVerificationHandler` so the package can mark the reset address verified.
   No user-facing email-verification endpoint exists.
-- Task #1 (dependencies, contract, schema), Task #2 (authentication store), and
-  Task #3 (API foundation) are complete. API e2e tests and the frontend are next.
+- Task #1 (dependencies, contract, schema), Task #2 (authentication store),
+  Task #3 (API foundation), and Task #4 (API e2e tests) are complete. The e2e suite
+  covers auth, users, password reset, CSRF, and routing, and also runs the store
+  contract: 31 tests passing. The frontend is next.
 - `apps/web` is a Vite React scaffold wired into Docker with `@repo/contract` as a
   dependency; TanStack Router/Query, Axios, Mantine, forms, and the auth UI are not
   set up yet.
@@ -184,6 +186,8 @@ New/changed files:
   protected `GET /users/me` using `@CurrentUser()`.
 - `apps/api/src/mail/mail.module.ts` — `MailModule` with `LogMailTransport` in dev
   and `SmtpTransport` when `SMTP_URL` is set.
+- `apps/api/test/auth.e2e-spec.ts` — cookie-preserving Supertest coverage for
+  signup/signin, `/users/me`, sign-out, password reset, CSRF, and routing.
 
 Behavior:
 

@@ -88,21 +88,22 @@ current.
 
 ## 4. API tests
 
-- [ ] Add auth/users e2e specs using the test database and a cookie-preserving
-      Supertest agent.
-- [ ] Signup: 201 user + `Set-Cookie` HttpOnly/SameSite; no token field; duplicate
+- [x] Add auth/users e2e specs using the test database and a cookie-preserving
+      Supertest agent. Tests use an in-memory mail transport and a cheap scrypt cost;
+      e2e files run serially so the store contract's cleanup cannot race the auth suite.
+- [x] Signup: 201 user + `Set-Cookie` HttpOnly/SameSite; no token field; duplicate
       → 409; invalid input → 400.
-- [ ] Signin: 200 + cookie; wrong password/unknown email → 401.
-- [ ] `/users/me`: cookie → 200; no/invalid/expired cookie → 401; deleted user → 401.
-- [ ] Sign-out: 204; cookie cannot be reused.
-- [ ] Forgot-password: known and unknown emails both 202 and the same body; no token
+- [x] Signin: 200 + cookie; wrong password/unknown email → 401.
+- [x] `/users/me`: cookie → 200; no/invalid/expired cookie → 401; deleted user → 401.
+- [x] Sign-out: 204; cookie cannot be reused.
+- [x] Forgot-password: known and unknown emails both 202 and the same body; no token
       in the response.
-- [ ] Reset-password: valid token → 200 + session cookie; old password fails; new
+- [x] Reset-password: valid token → 200 + session cookie; old password fails; new
       password signs in; token cannot be reused; invalid/expired → 400.
-- [ ] CSRF: cross-origin state-changing request without a trusted origin is rejected.
-- [ ] Confirm `/auth/me` is not registered.
-- [ ] Clean up test users, sessions, and email tokens; run the store contract suite.
-- [ ] Run `docker compose exec api pnpm --filter @repo/api test:e2e`.
+- [x] CSRF: cross-origin state-changing request without a trusted origin is rejected.
+- [x] Confirm `/auth/me` is not registered.
+- [x] Clean up test users, sessions, and email tokens; run the store contract suite.
+- [x] Run `docker compose exec api pnpm --filter @repo/api test:e2e`.
 
 ## 5. Web foundation
 
