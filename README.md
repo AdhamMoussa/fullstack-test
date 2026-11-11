@@ -118,7 +118,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 19 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 22 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
 
 ## Environment variables
 
@@ -137,7 +137,7 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | `SESSION_IDLE_TTL`      | api                            | `1d`                                                   |
 | `SESSION_COOKIE_SECURE` | api (session cookie)           | `false` (default `true`; see the session notes)        |
 | `SMTP_URL`              | api (optional)                 | unset; logs mail in development                        |
-| `VITE_API_URL`          | web                            | `http://localhost:3000`                                |
+| `VITE_API_URL`          | web build; api (root builds)   | `http://localhost:3000`                                |
 
 ## Sessions and password reset
 
@@ -229,6 +229,39 @@ classes. To try a protected route, call `POST /auth/signin` (or `/auth/signup`) 
 UI first: the browser stores the httpOnly session cookie (`sid` in Docker dev,
 `__Host-sid` over HTTPS), and "Try it out" on
 `GET /users/me` then works.
+
+## Deploying
+
+The Dockerfiles and `compose.yaml` are for development only; there is no production
+image.
+
+`pnpm build` produces:
+
+- `apps/api/dist` — run it with `NODE_ENV=production node apps/api/dist/main.js` from
+  an installed workspace.
+- `apps/web/dist` — static files; serve them with an SPA fallback to `index.html`.
+
+Required production environment:
+
+- `NODE_ENV=production` (also disables `/docs`).
+- `MONGODB_URI`, pointing at a MongoDB replica set: Prisma needs transactions, so a
+  standalone server will not do (Atlas qualifies).
+- `WEB_ORIGIN` and `APP_URL`, both HTTPS origins.
+- `SMTP_URL`: required in production. The API refuses to start without it, so reset
+  links and their tokens never reach the logs.
+- `MAIL_FROM`.
+- Leave `SESSION_COOKIE_SECURE` unset or `true`.
+- `VITE_API_URL` at web build time: the build fails without it.
+
+Run `MONGODB_URI=… pnpm --filter @repo/db push` against the production database once
+before the first start, so the unique email index and the auth collections exist.
+
+- Serve both apps over HTTPS: the `__Host-sid` cookie is `Secure`.
+- Keep the web app and the API same-site (for example `app.example.com` and
+  `api.example.com`), because the session cookie is `SameSite=Lax`.
+- Behind a reverse proxy or load balancer, the logged client IP is the proxy's until
+  Express `trust proxy` is configured in `apps/api/src/main.ts`.
+- Logs are JSON on stdout, for the platform to collect.
 
 ## Troubleshooting
 

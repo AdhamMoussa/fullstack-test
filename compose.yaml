@@ -126,6 +126,8 @@ services:
       # Production keeps the default (true).
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SMTP_URL: ${SMTP_URL:-}
+      # The root build/typecheck run in this container and build the web app too.
+      VITE_API_URL: http://localhost:3000
       pnpm_config_verify_deps_before_run: 'false'
     ports:
       - '127.0.0.1:3000:3000'

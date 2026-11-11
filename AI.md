@@ -77,6 +77,25 @@ that did not match the architecture or product requirements.
   single-use reset link end to end. This should cover Safari as well, since it
   handles Secure cookies on `localhost` differently from Chrome and Firefox.
 
+## Prompts that worked
+
+1. "implement task #6 in @plans/auth/tasks.md". The task list held the spec,
+   acceptance criteria, and constraints, so a one-line prompt carried full context.
+2. "fix the auth check and redirects on frontend. use proper pattern according to
+   community standards and best practices". It asked for the documented pattern
+   instead of a specific fix, which surfaced TanStack Router's `beforeLoad` guards
+   and replaced a reload loop.
+3. "I made some changes. check them to see how the frontend should be structured.
+   update docs accordingly and fix errors". It made the AI infer conventions from my
+   hand edits and propagate them to the docs and the code.
+4. "now evaluate this whole project against @Full_Stack_Test_Task.pdf … provide
+   recommendations if you find any. don't change any code". A review-only pass
+   against the brief produced a prioritized checklist without touching code.
+5. "I tested a fresh clone, the compose dev is up and working, but signup is broken,
+   the account is created but the `/users/me` is called immediately and returns 401
+   before redirecting". A precise symptom report let the AI trace the cause from the
+   request logs (Safari dropping Secure cookies on `http://localhost`).
+
 ## Where I changed AI's direction
 
 - **Docker dev architecture.** AI first kept only MongoDB in Compose, then built a

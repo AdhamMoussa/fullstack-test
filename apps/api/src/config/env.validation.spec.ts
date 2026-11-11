@@ -28,4 +28,26 @@ describe('validateEnv', () => {
       validateEnv({ ...minimalEnv, SESSION_COOKIE_SECURE: 'yes' }),
     ).toThrow(/SESSION_COOKIE_SECURE/)
   })
+
+  it('requires SMTP_URL in production', () => {
+    expect(() =>
+      validateEnv({ ...minimalEnv, NODE_ENV: 'production' }),
+    ).toThrow(/SMTP_URL/)
+  })
+
+  it('accepts SMTP_URL in production', () => {
+    const productionEnv = validateEnv({
+      ...minimalEnv,
+      NODE_ENV: 'production',
+      SMTP_URL: 'smtp://user:pass@mail.example.com:587',
+    })
+
+    expect(productionEnv.SMTP_URL).toBe('smtp://user:pass@mail.example.com:587')
+  })
+
+  it('allows development without SMTP_URL', () => {
+    expect(
+      validateEnv({ ...minimalEnv, NODE_ENV: 'development' }).SMTP_URL,
+    ).toBeUndefined()
+  })
 })

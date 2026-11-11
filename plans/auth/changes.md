@@ -271,6 +271,27 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `README.md`, `AGENTS.md`, `AI.md`, `plans/auth/{plan,changes}.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Production configuration guards and deployment notes
+
+- **Requested by:** Developer
+- **Request:** proceeding with the submission-review tasks.
+- **Change:** `SMTP_URL` is now required when `NODE_ENV=production` (env validation
+  fails at startup instead of logging reset links); `VITE_API_URL` is required for
+  web builds (Vite fails without it, and the Axios client has no localhost fallback);
+  the README gains a Deploying section, and `AI.md` gains a "Prompts that worked"
+  section.
+- **Why:** A production deploy without SMTP would write every reset token to the
+  logs, and a production build without `VITE_API_URL` would silently call localhost;
+  both are silent misconfigurations instead of loud failures.
+- **Impact:** The API refuses to start in production without `SMTP_URL`;
+  `vite build` and `vite` fail without `VITE_API_URL`, so `compose.yaml` now sets it
+  on the `api` service too (root builds run there). No API or product behavior
+  changes; new API unit tests.
+- **Files:** `apps/api/src/config/env.validation.ts` (+ spec), `apps/web/vite.config.ts`,
+  `apps/web/src/modules/core/lib/api.ts`, `apps/web/src/vite-env.d.ts`, `compose.yaml`,
+  `README.md`, `AI.md`, `AGENTS.md`, `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown
