@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common'
 import { PasswordHasher } from '@nestjs/authentication'
-import type { PublicUser } from '@repo/contract'
+import type { User } from '@repo/contract'
 import { Prisma } from '@repo/db'
 
 import { UsersRepository } from '../users/users.repository.js'
@@ -22,7 +22,7 @@ export class CredentialsService {
     email: string
     name: string
     password: string
-  }): Promise<PublicUser> {
+  }): Promise<User> {
     if (await this.usersRepository.findByEmail(registration.email)) {
       throw new ConflictException('Email already registered.')
     }
@@ -45,10 +45,7 @@ export class CredentialsService {
     }
   }
 
-  async verifyPassword(
-    email: string,
-    password: string,
-  ): Promise<PublicUser | null> {
+  async verifyPassword(email: string, password: string): Promise<User | null> {
     const storedCredentials = await this.usersRepository.findCredentials(email)
     // With no account the hasher checks a dummy hash, so the response time
     // does not reveal which addresses are registered.

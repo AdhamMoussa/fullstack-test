@@ -1,7 +1,7 @@
-import type { PublicUser } from '@repo/contract'
-import type { User } from '@repo/db'
+import type { User as ContractUser } from '@repo/contract'
+import type { User as PrismaUser } from '@repo/db'
 
-export function toPublicUser(user: User): PublicUser {
+export function toUser(user: PrismaUser): ContractUser {
   return {
     id: user.id,
     email: user.email,

@@ -4,12 +4,12 @@ import {
   SessionCookieProvider,
   type SessionRecord,
 } from '@nestjs/authentication'
-import type { PublicUser } from '@repo/contract'
+import type { User } from '@repo/contract'
 
 import { UsersRepository } from '../users/users.repository.js'
 
 @Injectable()
-export class SessionAuth extends SessionCookieProvider<PublicUser> {
+export class SessionAuth extends SessionCookieProvider<User> {
   constructor(
     private readonly usersRepository: UsersRepository,
     registry: AuthenticationRegistry,
@@ -18,7 +18,7 @@ export class SessionAuth extends SessionCookieProvider<PublicUser> {
     registry.registerProvider(this)
   }
 
-  protected validate(session: SessionRecord): Promise<PublicUser | null> {
+  protected validate(session: SessionRecord): Promise<User | null> {
     return this.usersRepository.findById(session.userId)
   }
 }

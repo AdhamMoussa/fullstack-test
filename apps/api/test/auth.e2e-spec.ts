@@ -8,7 +8,7 @@ import {
 } from '@nestjs/authentication'
 import { InMemoryMailTransport, MailTransport } from '@nestjs/mail'
 import { Test } from '@nestjs/testing'
-import type { PublicUser } from '@repo/contract'
+import type { User } from '@repo/contract'
 import request from 'supertest'
 import type { App } from 'supertest/types.js'
 import {
@@ -60,7 +60,7 @@ async function signUpUser(
   email = uniqueEmail(),
 ): Promise<{
   agent: SupertestAgent
-  createdUser: PublicUser
+  createdUser: User
   email: string
   signupResponse: request.Response
 }> {
@@ -68,7 +68,7 @@ async function signUpUser(
     .post('/auth/signup')
     .send(signupBody(email))
     .expect(201)
-  const createdUser = signupResponse.body.user as PublicUser
+  const createdUser = signupResponse.body.user as User
   createdUserIds.push(createdUser.id)
 
   return { agent, createdUser, email, signupResponse }

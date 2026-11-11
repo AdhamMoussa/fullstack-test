@@ -20,6 +20,6 @@ export const apiErrorSchema = z.object({
   error: z.string().optional(),
 })
 
-export type PublicUser = z.infer<typeof userSchema>
+export type User = z.infer<typeof userSchema>
 export type AuthResponse = z.infer<typeof authResponseSchema>
 export type ApiError = z.infer<typeof apiErrorSchema>

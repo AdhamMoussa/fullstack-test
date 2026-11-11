@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common'
-import type { PublicUser } from '@repo/contract'
+import type { User } from '@repo/contract'
 
 import { PrismaService } from '../prisma/prisma.service.js'
-import { toPublicUser } from './user.mapper.js'
+import { toUser } from './user.mapper.js'
 
 export const normalizeEmail = (email: string): string =>
   email.trim().normalize('NFC').toLowerCase()
@@ -15,7 +15,7 @@ export class UsersRepository {
     email: string
     name: string
     passwordHash: string
-  }): Promise<PublicUser> {
+  }): Promise<User> {
     const user = await this.prismaService.client.user.create({
       data: {
         email: normalizeEmail(newUser.email),
@@ -24,33 +24,31 @@ export class UsersRepository {
       },
     })
 
-    return toPublicUser(user)
+    return toUser(user)
   }
 
-  async findById(id: string): Promise<PublicUser | null> {
+  async findById(id: string): Promise<User | null> {
     const user = await this.prismaService.client.user.findUnique({
       where: { id },
     })
-    return user ? toPublicUser(user) : null
+    return user ? toUser(user) : null
   }
 
-  async findByEmail(email: string): Promise<PublicUser | null> {
+  async findByEmail(email: string): Promise<User | null> {
     const user = await this.prismaService.client.user.findUnique({
       where: { email: normalizeEmail(email) },
     })
-    return user ? toPublicUser(user) : null
+    return user ? toUser(user) : null
   }
 
   async findCredentials(
     email: string,
-  ): Promise<{ user: PublicUser; passwordHash: string } | null> {
+  ): Promise<{ user: User; passwordHash: string } | null> {
     const user = await this.prismaService.client.user.findUnique({
       where: { email: normalizeEmail(email) },
     })
 
-    return user
-      ? { user: toPublicUser(user), passwordHash: user.passwordHash }
-      : null
+    return user ? { user: toUser(user), passwordHash: user.passwordHash } : null
   }
 
   async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
