@@ -16,7 +16,8 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
 
 - NestJS and Vite scaffolds, pnpm/Turbo workspace wiring, and the Docker/Compose
   development setup.
-- Prisma schema/client plumbing, shared contract schemas, and most tests.
+- Prisma schema/client plumbing, shared contract schemas, the Prisma
+  `SessionStore`/`EmailTokenStore` implementation, and most tests.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
@@ -34,6 +35,9 @@ that did not match the architecture or product requirements.
 - Using Context7 for current framework/library documentation.
 - Running the stack, reading logs, and correcting at the decision level instead of
   accepting a one-shot implementation.
+- Running the authentication package's own store contract against the real test
+  database, including its concurrency cases, instead of relying on hand-written
+  assumptions about the store's atomicity.
 - Keeping `plans/auth/` with the plan, task checklist, and change log so the intent
   behind each change stays visible.
 

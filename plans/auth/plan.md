@@ -1,6 +1,6 @@
 # Auth Feature Plan
 
-**Status:** `@nestjs/authentication` adopted; dependencies, contract, and schema groundwork done — auth implementation not started
+**Status:** `@nestjs/authentication` adopted; Tasks #1 (dependencies, contract, schema) and #2 (Prisma auth store) complete — API implementation next
 **Last updated:** 2026-11-11
 **Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
@@ -45,12 +45,16 @@ React forms.
   tests pass (19).
 - `packages/db` has `User` (`emailVerified` included), `AuthSession`, and
   `AuthEmailToken`; the schema has been generated and pushed to the dev and test
-  databases.
-- `apps/api` has the auth/config/mail packages installed and
-  `StandardSchemaValidationPipe` registered, but no auth/users modules or
-  authentication code yet.
-- Task #1 (dependencies, contract, schema) is complete; Task #2 (authentication
-  store) and the API/frontend implementation are next.
+  databases. Store user ids are plain strings, so the package contract's opaque
+  ids work without ObjectId conversion.
+- `apps/api` has the auth/config/mail packages installed,
+  `StandardSchemaValidationPipe` registered, and `PrismaAuthStore` implementing
+  `SessionStore`/`EmailTokenStore` in `apps/api/src/prisma/`. The package's
+  `authenticationStoreContract()` suite passes against `assessment_test`, including
+  concurrency and cross-client persistence, but there are still no auth/users
+  modules or authentication code.
+- Task #1 (dependencies, contract, schema) and Task #2 (authentication store) are
+  complete; the API/frontend implementation is next.
 - `apps/web` is a Vite React scaffold wired into Docker with `@repo/contract` as a
   dependency; TanStack Router/Query, Axios, Mantine, forms, and the auth UI are not
   set up yet.
@@ -112,9 +116,10 @@ React forms.
 - `AuthSession` (new): the fields `SessionStore` requires, including a unique token
   hash, user id, creation/activity timestamps, and expiry. The raw cookie token is
   never stored.
-- `AuthEmailToken` (new): the fields `EmailTokenStore` requires, including a unique
-  token hash, user id/email, purpose, expiry, and creation/consumption timestamps.
-  The package owns the reset-link lifecycle.
+- `AuthEmailToken` (new): the fields `EmailTokenStore` requires: a unique token
+  hash, user id/email, purpose, optional password-hash fingerprint, and creation
+  and expiry timestamps. Consumption deletes the record, so there is no separate
+  used timestamp. The package owns the reset-link lifecycle.
 
 ## API design
 

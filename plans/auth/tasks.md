@@ -37,15 +37,18 @@ current.
 
 ## 2. Authentication store
 
-- [ ] Implement `apps/api/src/prisma/prisma-auth.store.ts` for `SessionStore` and
+- [x] Implement `apps/api/src/prisma/prisma-auth.store.ts` for `SessionStore` and
       `EmailTokenStore`.
-- [ ] Register both contracts with `AuthenticationStorage.registerSource()`.
-- [ ] Use conditional `updateMany`/`deleteMany` with counts for the atomic rules;
+- [x] Register both contracts with `AuthenticationStorage.registerSource()`.
+- [x] Use conditional `updateMany`/`deleteMany` with counts for the atomic rules;
       never read-then-write for session deletion/rotation or email-token consumption.
-- [ ] Add the package's `authenticationStoreContract()` suite against
+      Email-token consumption uses a single conditional `delete` (find-and-delete)
+      so it both returns the token and stays atomic under concurrency.
+- [x] Add the package's `authenticationStoreContract()` suite against
       `assessment_test` MongoDB, including the concurrency cases.
-- [ ] Verify the `AuthSession`/`AuthEmailToken` data survives an API restart and is
-      shared between API instances (no in-memory fallback).
+- [x] Verify the `AuthSession`/`AuthEmailToken` data survives an API restart and is
+      shared between API instances (no in-memory fallback). The suite reads records
+      back through a fresh Prisma client/store instance.
 
 ## 3. API foundation
 
