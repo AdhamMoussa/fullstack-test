@@ -29,6 +29,10 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
+- Delivery verification: running the workspace checks and the API e2e suite, driving
+  the manual browser flow (signup, reload, sign-out, sign-in, forgot/reset) through
+  Chrome DevTools, checking cookie flags and browser storage, and the final README
+  pass.
 
 I made the decisions below, reviewed the generated output, and corrected the parts
 that did not match the architecture or product requirements.
@@ -56,6 +60,9 @@ that did not match the architecture or product requirements.
   keeps the package's `__Host-sid` default.
 - Keeping `plans/auth/` with the plan, task checklist, and change log so the intent
   behind each change stays visible.
+- Driving the real browser flow against the Docker stack (not just unit checks)
+  confirmed the cookie flags, empty browser storage, guard redirects, and the
+  single-use reset link end to end.
 
 ## Where I changed AI's direction
 

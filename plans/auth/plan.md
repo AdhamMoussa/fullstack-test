@@ -1,6 +1,6 @@
 # Auth Feature Plan
 
-**Status:** `@nestjs/authentication` adopted; Tasks #1–#3 (contract/schema, Prisma store, API foundation) complete — API e2e tests next
+**Status:** `@nestjs/authentication` adopted; Tasks #1–#7 complete; optional follow-ups (throttling, Swagger, request logging) are deferred
 **Last updated:** 2026-11-11
 **Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
@@ -72,8 +72,18 @@ React forms.
   the signup, signin, forgot-password, reset-password, and `/app` pages, all driven by
   the contract schemas, the mutation hooks in
   `src/modules/auth/queries/auth-mutations.ts`, and guard-driven redirects.
-- Task #5 (web foundation) and Task #6 (auth screens) are complete; browser
-  verification and delivery (Task #7) are next.
+- Task #5 (web foundation) and Task #6 (auth screens) are complete, as is Task #7
+  (verification and delivery).
+- Verification (2026-11-11, Docker stack): `pnpm lint`, `pnpm typecheck`,
+  `pnpm test`, and `pnpm build` pass; `pnpm test` runs 19 contract tests and 1 API
+  unit test, and the only build warning is Vite's >500 kB chunk advisory. The API
+  e2e command passes 31 tests in 3 files (auth 16, store contract 14, app 1). The
+  manual Chrome flow covered the signed-out `/app` redirect, signup validation and
+  trimming, reload, sign-out/sign-in with the generic credentials error, the
+  generic forgot-password state, the logged reset link (signs in and lands on
+  `/app`), reused and missing tokens, and the old/new password swap. The cookie
+  flags, empty browser storage, token-free response body, security headers, CSRF
+  403, and 204 sign-out without a session were all confirmed.
 - Docker Compose runs `mongo`, `db`, `contract`, `api`, and `web`; all ports are
   loopback-only. `db` pushes the schema to both the dev and test databases.
 - Root scripts run through the `api`/`db` containers; Oxlint is the linter and
@@ -303,24 +313,24 @@ consistent with Mantine defaults.
 
 ## Acceptance criteria
 
-- [ ] Signup validates email, name (3+), password policy, and matching confirmation.
-- [ ] Duplicate email returns 409 and does not create a second user.
-- [ ] Passwords are hashed by `PasswordHasher`; no response contains `passwordHash`
+- [x] Signup validates email, name (3+), password policy, and matching confirmation.
+- [x] Duplicate email returns 409 and does not create a second user.
+- [x] Passwords are hashed by `PasswordHasher`; no response contains `passwordHash`
       or `confirmPassword`.
-- [ ] Signup/signin set an HttpOnly SameSite session cookie; no token is returned or
+- [x] Signup/signin set an HttpOnly SameSite session cookie; no token is returned or
       stored in `localStorage`.
-- [ ] `GET /users/me` uses `@CurrentUser()` and the session cookie; `/auth/me` is gone.
-- [ ] Sign-out clears the session and the cookie.
-- [ ] Forgot-password returns the same 202 for known and unknown emails.
-- [ ] Reset-password accepts a valid single-use token, updates the password, signs
+- [x] `GET /users/me` uses `@CurrentUser()` and the session cookie; `/auth/me` is gone.
+- [x] Sign-out clears the session and the cookie.
+- [x] Forgot-password returns the same 202 for known and unknown emails.
+- [x] Reset-password accepts a valid single-use token, updates the password, signs
       the user in, and invalidates the token; invalid/expired/used tokens return 400.
-- [ ] The Prisma `SessionStore`/`EmailTokenStore` pass the package contract tests.
-- [ ] `/signup`, `/signin`, `/forgot-password`, `/reset-password`, and `/app` work
+- [x] The Prisma `SessionStore`/`EmailTokenStore` pass the package contract tests.
+- [x] `/signup`, `/signin`, `/forgot-password`, `/reset-password`, and `/app` work
       with the shared contract schemas.
-- [ ] `/app` shows exactly `Welcome to the application.` and redirects when signed out.
-- [ ] Lint, typecheck, unit tests, store contract tests, API e2e, and the production
+- [x] `/app` shows exactly `Welcome to the application.` and redirects when signed out.
+- [x] Lint, typecheck, unit tests, store contract tests, API e2e, and the production
       web build pass.
-- [ ] README and `AI.md` are complete.
+- [x] README and `AI.md` are complete.
 
 ## Risks / notes
 

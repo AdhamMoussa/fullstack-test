@@ -2,14 +2,14 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
 
-> **Status:** work in progress. The workspace, Docker dev stack, database package, shared contract, auth API (session cookies, signup/signin, password reset, users), Prisma session/email-token store, and web foundation (providers, file-based routes, `beforeLoad` route guards) are in place. The React auth screens are not built yet.
+> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, and `/users/me`; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-ups not done: auth rate limiting, Swagger/OpenAPI, structured request logging, and production email delivery.
 
 ## Layout
 
 | Path                | Package          | What it is                                                            |
 | ------------------- | ---------------- | --------------------------------------------------------------------- |
 | `apps/api`          | `@repo/api`      | NestJS 12 API (ESM)                                                   |
-| `apps/web`          | `@repo/web`      | React + Vite frontend (foundation; auth screens pending)              |
+| `apps/web`          | `@repo/web`      | React + Vite frontend (Mantine, TanStack Router/Query)                |
 | `packages/db`       | `@repo/db`       | Prisma 6 schema and client for MongoDB (server-only)                  |
 | `packages/contract` | `@repo/contract` | Shared Zod schemas and inferred request/response types (browser-safe) |
 
@@ -25,7 +25,7 @@ AI usage, corrections, and my human decisions are recorded in [`AI.md`](./AI.md)
 
 ```bash
 pnpm install   # host: lockfile, editor types, Oxlint
-pnpm dev       # builds images and starts mongo, db, api in the foreground
+pnpm dev       # builds images and starts mongo, db, contract, api, and web in the foreground
 ```
 
 The API is at http://localhost:3000 and the web app at http://localhost:5173. Stop the stack with `Ctrl+C`, or run `pnpm dev:down`.
@@ -39,7 +39,7 @@ No `.env` file is needed: `compose.yaml` provides development defaults.
 | `mongo`    | 27017                 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions)                                                                                                                                 |
 | `db`       | 5555 (Prisma Studio)  | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`)                                                              |
 | `contract` | —                     | Rebuilds the shared schemas/types on change (`tsup --watch`)                                                                                                                                         |
-| `web`      | 5173                  | Vite dev server with HMR; providers, routes, Axios auth client, and guards are in place; screens are pending                                                                                         |
+| `web`      | 5173                  | Vite dev server with HMR for the React app                                                                                                                                                           |
 | `api`      | 3000                  | Runs Nest via `nodemon` → `nest start` (SWC builder from `nest-cli.json`). It restarts when `apps/api/src`, the built `@repo/db`, the generated Prisma client, or the built `@repo/contract` changes |
 
 Source code is bind-mounted into the containers, so edits apply immediately. Each container has its own `node_modules`; your host's `node_modules` is never used inside them.
@@ -88,7 +88,27 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 - `authResponseSchema` / `AuthResponse` — `{ user }` only; the session is the httpOnly cookie
 - `apiErrorSchema` / `ApiError` — shared error response
 
-Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the web app will use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
+Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the web forms use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
+
+## Web app
+
+| Route                     | Access     | Behavior                                                      |
+| ------------------------- | ---------- | ------------------------------------------------------------- |
+| `/signup`                 | signed out | email, name, password, confirm                                |
+| `/signin`                 | signed out | email, password; link to forgot password; honors `?redirect=` |
+| `/forgot-password`        | signed out | always shows the same "check your email" message              |
+| `/reset-password?token=…` | signed out | new password + confirmation; signs in                         |
+| `/app`                    | signed in  | `Welcome to the application.`, name/email, log out            |
+
+`/` and unknown paths redirect to `/app`.
+
+Signed-out users who visit `/app` go to `/signin?redirect=/app`; signed-in users who
+visit an auth page go to `/app`.
+
+- Guards run in TanStack Router `beforeLoad` against the `/users/me` query.
+- After any session change the app clears the query cache and re-runs the guards.
+- The browser never sees the session token: no localStorage/sessionStorage, and the
+  cookie is HttpOnly.
 
 ## Tests
 
@@ -98,7 +118,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, and routing, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 1 API unit test; the e2e command runs 31 tests across the auth, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, and routing, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
 
 ## Environment variables
 
@@ -117,22 +137,43 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | `SMTP_URL`             | api (optional)                 | unset; logs mail in development                        |
 | `VITE_API_URL`         | web                            | `http://localhost:3000`                                |
 
+## Sessions and password reset
+
 Auth uses `@nestjs/authentication` server-side sessions in an httpOnly `__Host-sid`
-cookie. There are no JWT or localStorage secrets. The API sets Helmet-equivalent
-security headers, allows credentialed CORS from `WEB_ORIGIN`, and enables CSRF origin
-checks.
+cookie. There are no JWT or localStorage secrets.
+
+- The session is a server-side record in MongoDB (`auth_sessions`). The browser gets
+  only the `__Host-sid` cookie (HttpOnly, Secure, SameSite=Lax, Path=/). Lifetimes
+  come from `SESSION_ABSOLUTE_TTL` (default 7d) and `SESSION_IDLE_TTL` (default 1d).
+- CSRF origin checks reject state-changing requests from untrusted origins (403);
+  CORS allows credentials only from `WEB_ORIGIN`; security headers (CSP, HSTS,
+  X-Frame-Options) are enabled.
+- Reset tokens are stored only as SHA-256 hashes (`auth_email_tokens`).
+
+Reset flow:
+
+1. Submit an email on `/forgot-password`. The API returns 202 whether or not the
+   account exists.
+2. In dev, the reset link is logged: `docker compose logs api | grep reset-password`
+   (set `SMTP_URL` to send real mail).
+3. Open the link and choose a new password.
+4. The API marks the token used, updates the password, marks the email verified,
+   signs the user in, and the app goes to `/app`.
+5. Reused, expired, or invalid links return 400 and the page offers a new link.
 
 ## API
 
-| Method | Path                    | Auth           | Status                                                                           |
-| ------ | ----------------------- | -------------- | -------------------------------------------------------------------------------- |
-| `GET`  | `/`                     | none           | Scaffold endpoint, returns `Hello World!`                                        |
-| `POST` | `/auth/signup`          | none           | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
-| `POST` | `/auth/signin`          | none           | 200 `{ user }` + session cookie; 401 bad credentials                             |
-| `POST` | `/auth/forgot-password` | none           | 202 generic empty response for known and unknown emails; 400 invalid input       |
-| `POST` | `/auth/reset-password`  | none           | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
-| `POST` | `/auth/sign-out`        | none           | 204 and clears the cookie                                                        |
-| `GET`  | `/users/me`             | session cookie | 200 with the public user; 401 without a valid session                            |
+| Method | Path                    | Auth                      | Status                                                                           |
+| ------ | ----------------------- | ------------------------- | -------------------------------------------------------------------------------- |
+| `GET`  | `/`                     | none                      | Scaffold endpoint, returns `Hello World!`                                        |
+| `POST` | `/auth/signup`          | none                      | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
+| `POST` | `/auth/signin`          | none                      | 200 `{ user }` + session cookie; 401 bad credentials                             |
+| `POST` | `/auth/forgot-password` | none                      | 202 generic empty response for known and unknown emails; 400 invalid input       |
+| `POST` | `/auth/reset-password`  | none                      | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
+| `POST` | `/auth/sign-out`        | session cookie (optional) | 204; ends the current session and clears the cookie (204 even without a session) |
+| `GET`  | `/users/me`             | session cookie            | 200 with the public user; 401 without a valid session                            |
+
+Errors use the contract's `ApiError`: `{ statusCode, message, error }`, where `message` is a string or, for validation errors, an array like `["email: Invalid email address"]`. Status codes: 400 validation, 401 bad credentials/no session, 403 untrusted origin, 409 duplicate email.
 
 The contract `User` includes `id`, `email`, `name`, `emailVerified`, and ISO
 `createdAt`/`updatedAt` timestamps. Passwords, hashes, session tokens, and reset

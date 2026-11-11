@@ -152,33 +152,33 @@ current.
 
 ## 7. Verification and delivery
 
-- [ ] `pnpm lint`
-- [ ] `pnpm typecheck`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
-- [ ] API e2e suite and authentication store contract suite
-- [ ] Manual Docker flow: signup → `/app` → reload → sign out; sign in; forgot →
+- [x] `pnpm lint`
+- [x] `pnpm typecheck`
+- [x] `pnpm test`
+- [x] `pnpm build`
+- [x] API e2e suite and authentication store contract suite
+- [x] Manual Docker flow: signup → `/app` → reload → sign out; sign in; forgot →
       use the logged reset link → reset (signed in) → `/app`.
-- [ ] Confirm the browser stores no token in `localStorage` and the cookie is
+- [x] Confirm the browser stores no token in `localStorage` and the cookie is
       HttpOnly.
-- [ ] Update the root `README.md` API table, session notes, env table, and reset
+- [x] Update the root `README.md` API table, session notes, env table, and reset
       flow.
-- [ ] Update `AGENTS.md` for any changed decisions.
-- [ ] Update `AI.md` with the `@nestjs/authentication` decision and corrections.
-- [ ] Check no secrets/tokens are committed and `.env` files stay ignored.
+- [x] Update `AGENTS.md` for any changed decisions.
+- [x] Update `AI.md` with the `@nestjs/authentication` decision and corrections.
+- [x] Check no secrets/tokens are committed and `.env` files stay ignored.
 - [ ] Optional: add Swagger/OpenAPI docs for the auth endpoints.
 - [ ] Optional: add structured request logging and auth rate limiting.
 
 ## Definition of done
 
-- [ ] All acceptance criteria in `plan.md` are met.
-- [ ] No response exposes `passwordHash`, `confirmPassword`, or raw reset/session
+- [x] All acceptance criteria in `plan.md` are met.
+- [x] No response exposes `passwordHash`, `confirmPassword`, or raw reset/session
       tokens.
-- [ ] Duplicate emails, invalid input, bad credentials, missing sessions, and
+- [x] Duplicate emails, invalid input, bad credentials, missing sessions, and
       invalid/expired/used reset tokens return the documented statuses and
       `ApiError` shape.
-- [ ] `/users/me` is the user info endpoint; `/auth/me` is not registered.
-- [ ] The Prisma `SessionStore`/`EmailTokenStore` pass the package contract suite.
-- [ ] Web pages work in Docker at http://localhost:5173 against the API at
+- [x] `/users/me` is the user info endpoint; `/auth/me` is not registered.
+- [x] The Prisma `SessionStore`/`EmailTokenStore` pass the package contract suite.
+- [x] Web pages work in Docker at http://localhost:5173 against the API at
       http://localhost:3000 with credentialed cookies.
-- [ ] Workspace lint, typecheck, tests, and build are green.
+- [x] Workspace lint, typecheck, tests, and build are green.
