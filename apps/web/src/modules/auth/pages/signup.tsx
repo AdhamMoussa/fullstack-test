@@ -71,6 +71,7 @@ export function SignupPage() {
             error={errors.email?.message}
             {...register('email')}
           />
+
           <TextInput
             label="Name"
             autoComplete="name"
@@ -78,6 +79,7 @@ export function SignupPage() {
             error={errors.name?.message}
             {...register('name')}
           />
+
           <PasswordInput
             label="Password"
             autoComplete="new-password"
@@ -87,6 +89,7 @@ export function SignupPage() {
             visibilityToggleButtonProps={visibilityToggleButtonProps}
             {...register('password')}
           />
+
           <PasswordInput
             label="Confirm password"
             autoComplete="new-password"

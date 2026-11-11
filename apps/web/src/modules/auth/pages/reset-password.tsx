@@ -5,10 +5,12 @@ import { getRouteApi } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 
 import { AnchorLink } from '../../core/components/anchor-link'
-import { getApiErrorStatus, getApiErrorMessage } from '../../core/lib/api-error'
 import { AuthWrapper } from '../components/auth-wrapper'
 import { FormErrorAlert } from '../components/form-error-alert'
+
 import { useResetPasswordMutation } from '../queries/auth-mutations'
+
+import { getApiErrorStatus, getApiErrorMessage } from '../../core/lib/api-error'
 
 const resetPasswordRoute = getRouteApi('/_auth/reset-password')
 

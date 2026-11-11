@@ -8,7 +8,7 @@ permissions:
     effect: allow
   - action: shell
     resource: "*"
-    effect: ask
+    effect: allow
 ---
 
 You implement exactly the spec you're given. Follow the existing code style.

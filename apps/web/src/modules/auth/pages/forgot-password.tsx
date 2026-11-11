@@ -4,10 +4,12 @@ import { forgotPasswordInputSchema } from '@repo/contract'
 import { useForm } from 'react-hook-form'
 
 import { AnchorLink } from '../../core/components/anchor-link'
-import { getApiErrorMessage } from '../../core/lib/api-error'
 import { AuthWrapper } from '../components/auth-wrapper'
 import { FormErrorAlert } from '../components/form-error-alert'
+
 import { useRequestPasswordResetMutation } from '../queries/auth-mutations'
+
+import { getApiErrorMessage } from '../../core/lib/api-error'
 
 export function ForgotPasswordPage() {
   const requestPasswordResetMutation = useRequestPasswordResetMutation()

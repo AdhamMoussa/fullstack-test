@@ -31,6 +31,7 @@ export function ApplicationPage() {
               <Text size="xs" c="dimmed">
                 Name
               </Text>
+
               <Text>{currentUser.name}</Text>
             </div>
 
@@ -38,6 +39,7 @@ export function ApplicationPage() {
               <Text size="xs" c="dimmed">
                 Email
               </Text>
+
               <Text>{currentUser.email}</Text>
             </div>
           </Stack>

@@ -11,10 +11,12 @@ import { signInInputSchema } from '@repo/contract'
 import { useForm } from 'react-hook-form'
 
 import { AnchorLink } from '../../core/components/anchor-link'
-import { getApiErrorStatus, getApiErrorMessage } from '../../core/lib/api-error'
 import { AuthWrapper } from '../components/auth-wrapper'
 import { FormErrorAlert } from '../components/form-error-alert'
+
 import { useSignInMutation } from '../queries/auth-mutations'
+
+import { getApiErrorStatus, getApiErrorMessage } from '../../core/lib/api-error'
 
 const visibilityToggleButtonProps = {
   'aria-label': 'Toggle password visibility',
@@ -22,6 +24,7 @@ const visibilityToggleButtonProps = {
 
 export function SigninPage() {
   const signInMutation = useSignInMutation()
+
   const {
     register,
     handleSubmit,
@@ -70,6 +73,7 @@ export function SigninPage() {
             error={errors.email?.message}
             {...register('email')}
           />
+
           <PasswordInput
             label="Password"
             autoComplete="current-password"
