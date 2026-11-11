@@ -13,6 +13,9 @@ Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm +
 | `packages/db` | `@repo/db` | Prisma 6 schema and client for MongoDB (server-only) |
 | `packages/contract` | `@repo/contract` | Shared Zod schemas and inferred request/response types (browser-safe) |
 
+Feature plans, task checklists, and change logs live in `plans/`; auth is in `plans/auth/`.
+AI usage, corrections, and my human decisions are recorded in [`AI.md`](./AI.md).
+
 ## Prerequisites
 
 - **Docker Desktop**. Everything runs in containers.
@@ -78,8 +81,10 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 - `signUpInputSchema` / `SignUpInput` — email, name (3+), password (8+, letter, number, special), and matching password confirmation
 - `signInInputSchema` / `SignInInput` — email and password
 - `userSchema` / `PublicUser` — the public user shape (no password hash)
-- `authResponseSchema` / `AuthResponse` — access token plus user
+- `authResponseSchema` / `AuthResponse` — access token plus user (the auth plan replaces this with `{ user }` and an httpOnly session cookie)
 - `apiErrorSchema` / `ApiError` — shared error response
+
+Planned additions (see `plans/auth/`): `forgotPasswordInputSchema`/`ForgotPasswordInput`, `resetPasswordInputSchema`/`ResetPasswordInput`, and the token-free `AuthResponse`.
 
 Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the web app will use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
 
@@ -104,20 +109,28 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | `PORT` | api | `3000` |
 | `JWT_SECRET` | api | `dev-only-change-me` (override from your shell) |
 | `JWT_EXPIRES_IN` | api | `1h` |
-| `WEB_ORIGIN` | api (CORS) | `http://localhost:5173` |
+| `WEB_ORIGIN` | api (CORS/trusted origin) | `http://localhost:5173` |
 | `VITE_API_URL` | web | `http://localhost:3000` |
+
+The auth plan switches from bearer JWT to `@nestjs/authentication` httpOnly session
+cookies. It removes `JWT_SECRET`/`JWT_EXPIRES_IN`, adds `APP_URL` for reset links and
+optional `SMTP_URL`, and updates the Compose env when implemented.
 
 ## API
 
 | Method | Path | Auth | Status |
 | --- | --- | --- | --- |
 | `GET` | `/` | none | Scaffold endpoint, returns `Hello World!` |
-| `POST` | `/auth/signup` | none | Planned: 201 with token and user; 400 for invalid input, 409 for duplicate email |
-| `POST` | `/auth/signin` | none | Planned: 200 with token and user; 401 for bad credentials |
-| `GET` | `/auth/me` | Bearer JWT | Planned: 200 with user; 401 without a valid token |
+| `POST` | `/auth/signup` | none | Planned: 201 user + httpOnly session cookie; 400 for invalid input, 409 for duplicate email |
+| `POST` | `/auth/signin` | none | Planned: 200 user + session cookie; 401 for bad credentials |
+| `POST` | `/auth/forgot-password` | none | Planned: 202 generic response for known and unknown emails; 400 for invalid input |
+| `POST` | `/auth/reset-password` | none | Planned: 200 user + session cookie (signed in); 400 for invalid, expired, or used token |
+| `POST` | `/auth/sign-out` | session cookie | Planned: 204 and clear the cookie |
+| `GET` | `/users/me` | session cookie | Planned: 200 with user; 401 without a valid session |
 
 ## Troubleshooting
 
 - **A new dependency isn't found in a container.** Restart with `pnpm dev`; plain `docker compose up` keeps the old `node_modules` volumes.
 - **`pnpm build`/`test` says the service isn't running.** Start the stack with `pnpm dev` first.
 - **The API doesn't reflect a schema change.** Run `pnpm db:generate` (and `pnpm db:push` for new indexes).
+- **Forgot-password link:** in Docker dev the API logs the reset URL; check `docker compose logs api` (production email delivery is not wired yet).

@@ -10,6 +10,8 @@
 ## Tooling
 
 - Use the Context7 MCP for library/framework documentation before implementing APIs or configuration; prefer it over memory or web search.
+- Feature plans live in `plans/<feature>/` with `plan.md` (current plan), `tasks.md` (checklist), and `changes.md` (append-only developer-requested refinements with the initial baseline). Keep task status current. Auth is `plans/auth/`.
+- AI usage, corrections, and the developer’s human decisions are recorded in `AI.md`; read it before changing scope or tooling, and do not attribute AI-proposed defaults to the developer.
 
 ## Required deliverables
 
@@ -30,9 +32,9 @@
   - `compose.yaml` — `mongo`, `db` (tsup watch), `contract` (tsup watch), `api` (nodemon), and `web` (Vite) containers
 - Dependency direction: `web -> contract`; `api -> contract + db`; `db` and `contract` must not import each other.
 - Shared packages are ESM (`"type": "module"`), built by tsup to `dist`, with `main`/`types`/`exports` pointing at `dist`; apps depend on them with `workspace:*`. Every shared package exposes `build`, `watch`, `lint` (`oxlint`), and `typecheck` (`tsc --noEmit`).
-- `packages/contract`: `src/auth.ts` (email/password rules, `signUpInputSchema`, `signInInputSchema`, `SignUpInput`, `SignInInput`) and `src/common.ts` (`userSchema`/`PublicUser`, `authResponseSchema`/`AuthResponse`, `apiErrorSchema`/`ApiError`), all exported from `src/index.ts`. Types via `z.infer`; tsup `platform: "neutral"`, `external: ["zod"]`; Vitest tests live beside the schemas.
+- `packages/contract`: `src/auth.ts` (email/password rules, `signUpInputSchema`, `signInInputSchema`, `forgotPasswordInputSchema`, `resetPasswordInputSchema` and their types) and `src/common.ts` (`userSchema`/`PublicUser`, `authResponseSchema`/`AuthResponse` planned as `{ user }` with no token, `apiErrorSchema`/`ApiError`), all exported from `src/index.ts`. Types via `z.infer`; tsup `platform: "neutral"`, `external: ["zod"]`; Vitest tests live beside the schemas.
 - `packages/db`: Prisma schema in `prisma/`, generated client in `generated/prisma` (gitignored), globalThis-cached singleton, re-exported Prisma types; no Nest imports. Scripts `generate`/`push`/`studio` (root `db:*` aliases); tsup `platform: "node"`, externalize Prisma runtime.
-- `User` is the only DB model: ObjectId `id`, unique normalized `email`, `name`, `passwordHash`, `createdAt`, `updatedAt`. Auth is stateless JWT, so do not add Session/RefreshToken models.
+- DB models: `User` (ObjectId `id`, unique normalized `email`, `name`, `passwordHash`, `emailVerified`, timestamps), `AuthSession` and `AuthEmailToken` for the `@nestjs/authentication` `SessionStore`/`EmailTokenStore` contracts. Auth uses server-side sessions, not JWT; do not add a custom `PasswordResetToken` or `RefreshToken` model.
 - Shared versions (`typescript`, `@types/node`, `tsup`, `zod`) live in the `pnpm-workspace.yaml` catalog; packages use `"catalog:"`. Allow `prisma`, `@prisma/client`, `@prisma/engines`, `@swc/core`, and `esbuild` install scripts there; pnpm blocks them by default.
 - Containers set `pnpm_config_verify_deps_before_run=false` (in `compose.yaml`, not the workspace file) so `docker compose exec` never auto-installs into the container's `node_modules`; the host keeps pnpm's default check.
 - API is ESM (`"type": "module"`): use `.js` extensions in relative imports; do not add CommonJS settings.
@@ -80,29 +82,32 @@ docker compose exec db pnpm --filter @repo/db exec prisma <command>
 - The Vite scaffold is in place; auth screens and the libraries below are still to be added.
 - `apps/web` uses Mantine for UI, react-hook-form + `zodResolver` with `@repo/contract` schemas, Axios for HTTP, TanStack Query for server state, and TanStack Router for routing. Do not add another UI kit, `@mantine/form`, `react-router-dom`, or another data-fetching library.
 - Wrap the app in `MantineProvider` and `QueryClientProvider` with one `QueryClient`; import Mantine's global styles in the entrypoint.
-- All HTTP goes through one Axios instance in `src/lib/api.ts`, using `VITE_API_URL`; attach the current access token and on 401 clear auth state and redirect to `/signin`. Exempt signup/signin requests so their 401s reach the form.
-- Use TanStack Query mutations for signup/signin and a query for `/auth/me`; clear the query cache on logout.
-- TanStack Router owns routes; guard `/app` and redirect unauthenticated users to `/signin`; after signup/signin go to `/app`.
+- All HTTP goes through one Axios instance in `src/lib/api.ts`, using `VITE_API_URL` with `withCredentials: true`; the session is an httpOnly cookie, so there is no bearer token or `localStorage`. On 401, clear auth/query state and redirect to `/signin`; exempt auth form requests (`/auth/signup`, `/auth/signin`, `/auth/forgot-password`, `/auth/reset-password`) so their errors reach the form.
+- Use TanStack Query mutations for signup/signin/forgot/reset and a query for `/users/me`; sign-out calls `POST /auth/sign-out` and clears the query cache.
+- TanStack Router owns routes; guard `/app` and redirect unauthenticated users to `/signin`; after signup/signin go to `/app`; forgot/reset live at `/forgot-password` and `/reset-password`.
 
 ## Product requirements (exact)
 
-- Routes: `/signup`, `/signin`, `/app`. Unauthenticated `/app` visits redirect to `/signin`.
+- Routes: `/signup`, `/signin`, `/forgot-password`, `/reset-password`, `/app`. Unauthenticated `/app` visits redirect to `/signin`.
 - Signup fields: email (valid format), name (min 3 chars), password (min 8 chars, at least one letter, one number, and one special/non-alphanumeric character), and `confirmPassword` that must match `password`; the mismatch error belongs on `confirmPassword`.
 - Signin fields: email + password.
 - Application page must display the exact text `Welcome to the application.` Logout is optional but should end the session and redirect.
 - Define all email/name/password rules once in `@repo/contract`; React forms and Nest validation must use those schemas. Client-only validation is not acceptable.
 - Nest 12 validation: register `StandardSchemaValidationPipe` as `APP_PIPE` and attach contract schemas with `@Body({ schema })`; do not add class-validator DTOs.
-- Contract types: `SignUpInput`, `SignInInput`, `AuthResponse` (token + `PublicUser`), and public `PublicUser` (no `passwordHash`). They describe HTTP JSON, not Prisma rows (ISO date strings; no `Date`/`ObjectId`/Prisma types).
-- API contract: `POST /auth/signup` (201) and `POST /auth/signin` (200) return `AuthResponse`; `GET /auth/me` (protected, 200/401) returns `PublicUser`. Use 400 for validation, 401 for bad credentials, 409 for duplicate email.
+- Contract types: `SignUpInput`, `SignInInput`, `ForgotPasswordInput`, `ResetPasswordInput`, `AuthResponse` (`{ user: PublicUser }`, no token), and public `PublicUser` (no `passwordHash`). They describe HTTP JSON, not Prisma rows (ISO date strings; no `Date`/`ObjectId`/Prisma types).
+- API contract: `POST /auth/signup` (201) and `/auth/signin` (200) return the public user and set the httpOnly session cookie; `/auth/forgot-password` (202, generic, no body); `/auth/reset-password` (200, signs in, sets cookie; 400 invalid/expired/used token); `POST /auth/sign-out` (204, clears cookie); `GET /users/me` (protected, 200/401) returns `PublicUser`. Mark auth routes and the scaffold `GET /` `@Public()`. Use 400 for validation, 401 for bad credentials, 409 for duplicate email. Do not register `/auth/me`.
 - Store a unique, normalized (lowercased) email and a password hash only. Map Prisma `User` records to the public `PublicUser` contract at the API boundary.
 
 ## Guardrails
 
-- Hash passwords with bcrypt/argon2; issue short-lived JWTs; protect endpoints with a Nest guard.
-- Enable Helmet, CORS restricted to `WEB_ORIGIN`, global validation/error handling, and env-based secrets.
+- Use `@nestjs/authentication`: its global guard (default deny), `PasswordHasher` (scrypt, no argon2), `SessionCookieProvider`, `SignInService`, and `PasswordResetService`. Mark auth routes and the scaffold `GET /` `@Public()`; do not build a custom JWT/guard/password-reset implementation.
+- Split modules: `AuthModule` owns `/auth/*`, `UsersModule` owns `/users/*` and the protected `/users/me`; use the package's `@CurrentUser()`.
+- Sessions: httpOnly `__Host-sid` cookie, SameSite=Lax, Secure in production; configure lifetimes and `trustedOrigins: [WEB_ORIGIN]`. No token in localStorage or the response.
+- Implement `SessionStore`/`EmailTokenStore` against Prisma/Mongo and run `authenticationStoreContract()`; password reset stays package-owned. Always return 202 from forgot-password regardless of whether the email exists; never return raw tokens in HTTP. The dev mailer (`LogMailTransport`) logs the reset link; production email delivery is a follow-up.
+- Enable Helmet, credentialed CORS for `WEB_ORIGIN`, package CSRF origin checks (`app.enableCsrfProtection()` on Nest 12.1+), global validation/error handling, and env-based secrets.
 - `@repo/db` exports a lazy, globalThis-cached Prisma client getter; `apps/api` calls it from one `PrismaService` after env loading. Do not create clients per request, and never import `@repo/db` from web or contract.
 - MongoDB/Prisma: stay on Prisma 6.19.0 (Prisma 7 has no MongoDB connector); use `prisma db push`, not migrations. Put `url = env("MONGODB_URI")` in `schema.prisma`; do not copy the Prisma 7 `prisma.config.ts`/driver-adapter setup.
 - Model IDs as `String @id @default(auto()) @map("_id") @db.ObjectId`.
-- Compose injects `MONGODB_URI=mongodb://mongo:27017/assessment?replicaSet=rs0` and `MONGODB_TEST_URI=.../assessment_test?...` into `db`/`api`, plus `JWT_SECRET`, `JWT_EXPIRES_IN`, and `WEB_ORIGIN` into `api`. `.env.example` files document host-run values (`127.0.0.1` + `directConnection=true`); no host `.env` is needed for Docker dev. Never commit `.env`.
-- API tests use the `assessment_test` database on the same Mongo container: both vitest configs override `MONGODB_URI` with `MONGODB_TEST_URI`. Do not add `mongodb-memory-server`. Tests that write data must clean up after themselves.
+- Compose injects `MONGODB_URI=mongodb://mongo:27017/assessment?replicaSet=rs0` and `MONGODB_TEST_URI=.../assessment_test?...` into `db`/`api`, plus `WEB_ORIGIN` into `api`. The auth plan adds `APP_URL` and optional `SMTP_URL` and removes `JWT_SECRET`/`JWT_EXPIRES_IN` (Compose update pending). `.env.example` files document host-run values (`127.0.0.1` + `directConnection=true`); no host `.env` is needed for Docker dev. Never commit `.env`.
+- API tests use the `assessment_test` database on the same Mongo container: both vitest configs override `MONGODB_URI` with `MONGODB_TEST_URI`. Use a cookie-preserving Supertest agent and run the authentication store contract. Do not add `mongodb-memory-server`. Tests that write data must clean up after themselves.
 - Requirements first, then bonus work (logging, Swagger/OpenAPI, CI, more tests). Avoid extra services, GraphQL, Redux, and microservices for this scope.
