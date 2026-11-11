@@ -2,7 +2,7 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
 
-> **Status:** work in progress. The workspace, Docker dev stack, and database package are in place. The auth endpoints, `packages/contract`, and `apps/web` are not built yet.
+> **Status:** work in progress. The workspace, Docker dev stack, database package, and shared contract package are in place. The auth endpoints and `apps/web` are not built yet.
 
 ## Layout
 
@@ -11,7 +11,7 @@ Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm +
 | `apps/api` | `@repo/api` | NestJS 12 API (ESM) |
 | `apps/web` | `@repo/web` | React + Vite frontend (planned) |
 | `packages/db` | `@repo/db` | Prisma 6 schema and client for MongoDB (server-only) |
-| `packages/contract` | `@repo/contract` | Shared Zod request/response schemas (planned) |
+| `packages/contract` | `@repo/contract` | Shared Zod schemas and inferred request/response types (browser-safe) |
 
 ## Prerequisites
 
@@ -35,7 +35,8 @@ No `.env` file is needed: `compose.yaml` provides development defaults.
 | --- | --- | --- |
 | `mongo` | 27017 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions) |
 | `db` | 5555 (Prisma Studio) | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`) |
-| `api` | 3000 | Runs Nest via `nodemon` → `nest start -b swc`. It restarts when `apps/api/src`, the built `@repo/db`, or the generated Prisma client changes |
+| `contract` | — | Rebuilds the shared schemas/types on change (`tsup --watch`) |
+| `api` | 3000 | Runs Nest via `nodemon` → `nest start` (SWC builder from `nest-cli.json`). It restarts when `apps/api/src`, the built `@repo/db`, the generated Prisma client, or the built `@repo/contract` changes |
 
 Source code is bind-mounted into the containers, so edits apply immediately. Each container has its own `node_modules`; your host's `node_modules` is never used inside them.
 
@@ -45,6 +46,7 @@ Source code is bind-mounted into the containers, so edits apply immediately. Eac
 | --- | --- |
 | Edit API code | Save. The API restarts in about a second. |
 | Edit `packages/db/src` | Save. `db` rebuilds and the API restarts. |
+| Edit `packages/contract/src` | Save. `contract` rebuilds and the API restarts. |
 | Change the Prisma schema | `pnpm db:generate && pnpm db:push` (the API restarts after generation) |
 | Add/upgrade a dependency | `pnpm --filter <pkg> add <dep>` on the host, then restart `pnpm dev` (it rebuilds images and refreshes container `node_modules`) |
 | Inspect data | `pnpm db:studio`, then open http://localhost:5555, or connect any Mongo client to `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
@@ -67,10 +69,22 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 | `pnpm db:studio` | Prisma Studio on http://localhost:5555 |
 | `pnpm infra:dev` / `pnpm infra:dev:down` | Start/stop MongoDB only |
 
+## Shared contract
+
+`@repo/contract` is the single source of truth for the API's HTTP shapes and validation rules. It exports:
+
+- `signUpInputSchema` / `SignUpInput` — email, name (3+), password (8+, letter, number, special), and matching password confirmation
+- `signInInputSchema` / `SignInInput` — email and password
+- `userSchema` / `PublicUser` — the public user shape (no password hash)
+- `authResponseSchema` / `AuthResponse` — access token plus user
+- `apiErrorSchema` / `ApiError` — shared error response
+
+Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the planned frontend will use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
+
 ## Tests
 
 ```bash
-pnpm test                                                        # unit tests
+pnpm test                                                        # unit tests (API + contract)
 docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```

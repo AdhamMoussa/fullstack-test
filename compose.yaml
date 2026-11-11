@@ -52,6 +52,25 @@ services:
       retries: 40
       start_period: 30s
 
+  contract:
+    build:
+      context: .
+      dockerfile: packages/contract/Dockerfile
+    working_dir: /app
+    init: true
+    environment:
+      pnpm_config_verify_deps_before_run: "false"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/packages/contract/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "test -f packages/contract/dist/index.js"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
   api:
     build:
       context: .
@@ -60,6 +79,8 @@ services:
     init: true
     depends_on:
       db:
+        condition: service_healthy
+      contract:
         condition: service_healthy
     environment:
       NODE_ENV: development
@@ -77,6 +98,7 @@ services:
       - /app/node_modules
       - /app/apps/api/node_modules
       - /app/packages/db/node_modules
+      - /app/packages/contract/node_modules
 
 volumes:
   mongo_data:
