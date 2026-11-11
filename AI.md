@@ -192,6 +192,11 @@ one session to the next.
   choices were AI proposals: `pnpm deploy --prod --legacy` and the `files` fields it
   needs, the non-root Node runtime, nginx-unprivileged for the web app, Mailpit as the
   local SMTP inbox, and the 3001/8080/8025 ports.
+- **Locked toolchain versions.** I asked to lock Node and pnpm everywhere. These
+  specifics were AI proposals: `.nvmrc` as the single source for Node, `engines` plus
+  `engineStrict` to enforce it, and exact image tags rather than digests.
+  AI also proposed a script to check the versions agree; I dropped it to keep the
+  lock simple.
 
 ## Architecture and stack
 

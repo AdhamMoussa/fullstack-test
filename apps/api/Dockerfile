@@ -1,5 +1,5 @@
 # Dev image for @repo/api. Source is bind-mounted at runtime (see compose.yaml).
-FROM node:26-bookworm-slim
+FROM node:26.13.0-bookworm-slim
 
 # procps: Nest CLI stops its app process via tree-kill, which needs `ps`.
 RUN apt-get update \

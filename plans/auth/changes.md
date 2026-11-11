@@ -486,6 +486,37 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/changes.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Locked Node and pnpm versions
+
+- **Requested by:** Developer
+- **Request:** "lock Node and PNPM versions everywhere"
+- **Change:** Pinned one Node version (26.13.0) and one pnpm version (11.0.5) across
+  the repo:
+  - `.nvmrc` at the root with `26.13.0`, as the single source for Node.
+  - Root `package.json`: kept `packageManager: pnpm@11.0.5` and added
+    `engines: { node: 26.13.0, pnpm: 11.0.5 }`.
+  - `pnpm-workspace.yaml`: `engineStrict: true`, so pnpm refuses to install or run
+    on another Node version. `pmOnFail` keeps its default, so another pnpm switches
+    to `packageManager`'s 11.0.5.
+  - Every dev and production Dockerfile: `FROM node:26.13.0-bookworm-slim` (the tag
+    was floating `node:26-bookworm-slim`), with the existing
+    `npm install -g pnpm@11.0.5` lines unchanged.
+  - CI: `actions/setup-node` uses `node-version-file: .nvmrc` instead of
+    `node-version: 26`.
+- **Why:** The versions had already drifted: the host ran Node 26.12.1, the images
+  used the floating `node:26-bookworm-slim` tag (26.13.0 at the time), and CI
+  installed the newest 26.x. Nothing enforced Node, while pnpm was pinned in
+  `packageManager` and every Dockerfile.
+- **Impact:** Contributors need Node 26.13.0 on the host (`nvm install` in the repo);
+  pnpm refuses other versions. The dev and production images rebuild on the pinned
+  tag. The Docker-only path is unaffected.
+- **Files:** `.nvmrc`, `package.json`, `pnpm-workspace.yaml`, `apps/api/Dockerfile`,
+  `apps/api/Dockerfile.prod`, `apps/web/Dockerfile`, `apps/web/Dockerfile.prod`,
+  `packages/contract/Dockerfile`, `packages/db/Dockerfile`,
+  `.github/workflows/ci.yml`, `README.md`, `AGENTS.md`, `AI.md`,
+  `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

@@ -2,6 +2,9 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# pnpm refuses to install or run on a Node version other than `engines.node`.
+engineStrict: true
+
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

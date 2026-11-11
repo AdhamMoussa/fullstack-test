@@ -1,6 +1,6 @@
 # Production image for @repo/api: a built, dependency-complete runtime with no
 # toolchain. `compose.prod.yaml` also reuses the `build` stage to push the schema.
-FROM node:26-bookworm-slim AS build
+FROM node:26.13.0-bookworm-slim AS build
 
 # openssl: Prisma's engine links against libssl 3.
 RUN apt-get update \
@@ -24,7 +24,7 @@ RUN MONGODB_URI="mongodb://localhost:27017/assessment" pnpm exec turbo run build
 # `generated` for @repo/db) and installs production dependencies only.
 RUN pnpm --filter @repo/api --prod deploy --legacy /prod/api
 
-FROM node:26-bookworm-slim AS runtime
+FROM node:26.13.0-bookworm-slim AS runtime
 
 # openssl: the Prisma query engine links against libssl 3.
 RUN apt-get update \

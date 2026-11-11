@@ -1,5 +1,5 @@
 # Production image for @repo/web: static files served by unprivileged nginx.
-FROM node:26-bookworm-slim AS build
+FROM node:26.13.0-bookworm-slim AS build
 
 RUN npm install -g pnpm@11.0.5
 

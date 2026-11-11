@@ -1,5 +1,5 @@
 # Dev image for @repo/db. Source is bind-mounted at runtime (see compose.yaml).
-FROM node:26-bookworm-slim
+FROM node:26.13.0-bookworm-slim
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl procps \

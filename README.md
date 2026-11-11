@@ -21,7 +21,7 @@ AI usage, corrections, and my human decisions are recorded in [`AI.md`](./AI.md)
 ## Prerequisites
 
 - **Docker Desktop** is required. The whole stack runs in containers.
-- **Node 26 and pnpm 11** are only needed for host scripts: installing dependencies (this updates `pnpm-lock.yaml`), editor types and Oxlint, and the root commands. They are not needed to run the app.
+- **Node 26.13.0** (`.nvmrc`; run `nvm install` in the repo) and **pnpm 11.0.5** (`packageManager`; pnpm switches to the pinned version automatically) are only needed for host scripts: installing dependencies (this updates `pnpm-lock.yaml`), editor types and Oxlint, and the root commands. pnpm refuses to install or run on another Node version (`engineStrict`). The Docker-only path needs neither.
 
 ## Quick start
 
@@ -165,7 +165,7 @@ Source code is bind-mounted into the containers, so edits apply immediately. Eac
 
 ## Scripts
 
-Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs inside the running containers, so start `pnpm dev` first.
+Run from the repo root. Everything except `dev`, `dev:down`, and `infra:*` runs inside the running containers, so start `pnpm dev` first.
 
 | Script                                   | What it does                                                       |
 | ---------------------------------------- | ------------------------------------------------------------------ |
@@ -261,10 +261,10 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 
 Two production images, both built from the workspace root:
 
-| Dockerfile                 | What it produces                                                                                                                                                                                                                                                                                                                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api/Dockerfile.prod` | The API on `node:26-bookworm-slim`, with production dependencies only (`pnpm deploy --prod --legacy`), running as the non-root `node` user with `CMD node dist/main.js`. It carries `apps/api/dist`, the built `@repo/contract`, and `@repo/db` with its generated Prisma client and engine: no compiler, test runner, Nest CLI, or Prisma CLI. A Docker healthcheck polls `/health`. |
-| `apps/web/Dockerfile.prod` | The Vite bundle behind `nginxinc/nginx-unprivileged` (non-root, port 8080): SPA fallback to `index.html`, one-year immutable caching for fingerprinted `/assets/`, gzip, and `nosniff`/`no-referrer`/`DENY` security headers. A Docker healthcheck fetches `/`.                                                                                                                       |
+| Dockerfile                 | What it produces                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api/Dockerfile.prod` | The API on `node:26.13.0-bookworm-slim`, with production dependencies only (`pnpm deploy --prod --legacy`), running as the non-root `node` user with `CMD node dist/main.js`. It carries `apps/api/dist`, the built `@repo/contract`, and `@repo/db` with its generated Prisma client and engine: no compiler, test runner, Nest CLI, or Prisma CLI. A Docker healthcheck polls `/health`. |
+| `apps/web/Dockerfile.prod` | The Vite bundle behind `nginxinc/nginx-unprivileged` (non-root, port 8080): SPA fallback to `index.html`, one-year immutable caching for fingerprinted `/assets/`, gzip, and `nosniff`/`no-referrer`/`DENY` security headers. A Docker healthcheck fetches `/`.                                                                                                                            |
 
 Both are multi-stage: dependencies come from the lockfile (`pnpm fetch`), Turbo builds the shared packages before the app, and the runtime stage starts from a clean base. The web build bakes `VITE_API_URL` in at build time, so it is a build arg, not a runtime variable:
 

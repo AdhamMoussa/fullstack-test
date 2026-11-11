@@ -2,6 +2,10 @@
   "name": "assessment-test",
   "private": true,
   "packageManager": "pnpm@11.0.5",
+  "engines": {
+    "node": "26.13.0",
+    "pnpm": "11.0.5"
+  },
   "scripts": {
     "dev": "docker compose up --build --renew-anon-volumes",
     "dev:down": "docker compose down",
