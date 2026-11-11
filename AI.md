@@ -12,6 +12,31 @@ The repo was built with heavy AI assistance. I set the direction and scope, revi
 the output, and sent it back when it was wrong or overcomplicated. I am not claiming
 line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose.
 
+## AI setup
+
+I worked in [OpenCode](https://opencode.ai) with two custom agents, defined in
+`.opencode/agents/`:
+
+- `architect`, the primary agent: Claude Opus 5.5 with high reasoning effort
+  (`claude-agent/opus#high`, through the Claude Agent SDK provider). It has no
+  edit rights. It reads the code, checks library documentation, plans each change,
+  hands it to the writer as a self-contained spec, and reviews the diff before
+  anything is committed.
+- `writer`, a subagent: DeepSeek Flash (`deepseek/deepseek-flash`). It implements
+  one spec at a time, runs the verification commands it is given, and reports
+  the results back.
+
+Two MCP servers were connected:
+
+- Context7, for current documentation of NestJS, TanStack Router, Mantine, pnpm,
+  and the other libraries, so the work followed today's APIs rather than model
+  memory.
+- Chrome DevTools, for driving the app in a real browser: filling the forms,
+  reading network requests and cookie flags, and checking browser storage and the
+  console.
+
+The whole project cost about $2.50 in model usage.
+
 ## What was AI-assisted
 
 - NestJS and Vite scaffolds, pnpm/Turbo workspace wiring, and the Docker/Compose
@@ -140,15 +165,6 @@ one session to the next.
   scripts; Oxlint remains the linter.
 - **Web routing and structure.** I required TanStack Router file-based routes and a
   modular `core`/`auth` split instead of a manual route tree and a flat `src` layout.
-- **Auth guards.** I first required a root-layout `/users/me` query with
-  `<Navigate>` redirects instead of `beforeLoad`. That version had a reload loop: the
-  global 401 handler did `window.location.href = '/signin'` even on `/signin`, and
-  nothing redirected. I then asked AI to “fix the auth check and redirects … according
-  to community standards”. AI proposed TanStack Router’s documented pattern, and I
-  chose it: `beforeLoad` guards on `_app`/`_auth` using `ensureQueryData` and
-  `throw redirect()`, a validated `?redirect=` return path, and `resetAuthState`
-  (cache clear + `router.invalidate()`) on session changes and 401s. The query
-  cache is still never written by hand.
 - **No `useEffect` for redirects or derived state.** I require router primitives
   for redirects and derived render state instead of effects.
 - **Public contract name and module folders.** I renamed `PublicUser` to `User` and
