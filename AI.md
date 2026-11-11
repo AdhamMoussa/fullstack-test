@@ -50,6 +50,13 @@ that did not match the architecture or product requirements.
   invent a project structure from scratch.
 - Pointing at an existing package layout as a reference for the package shape.
 - Using Context7 for current framework/library documentation.
+- An architect/writer agent split, configured in `.opencode/agents/`. The architect
+  (a high-reasoning model with no edit rights) investigates, plans, and reviews
+  every diff; the writer (a fast, cheaper model) implements a self-contained
+  spec and reports its verification results. Every handoff states the goal, the
+  exact files and changes, the constraints, and the commands to verify. That kept
+  each change reviewable, and the diff review caught out-of-scope edits, such as
+  unrelated files being reformatted.
 - Running the stack, reading logs, and correcting at the decision level instead of
   accepting a one-shot implementation.
 - Running the authentication package's own store contract against the real test
