@@ -108,6 +108,95 @@ The initial plan was recorded on 2026-11-11 with these decisions:
 - **Files:** `plan.md`, `tasks.md`, `AGENTS.md`, `README.md`, `AI.md`.
 - **Status:** planned; no code implementation.
 
+### 2026-11-11 — File-based routing and modular web structure
+
+- **Requested by:** Developer
+- **Request:** “use Tanstack router file based routing”, “use layouts for auth
+  checks”, “stop complicating things”, “use modular structure on React project. an
+  auth module and core module. each module has its own components, hooks, libs...
+  the core module is for shared stuff”.
+- **Change:** Replaced the manual code-based route tree with TanStack Router
+  file-based routes under `src/routes`. Added `_auth` and `_app` layout routes for
+  auth checks. Split web code into `src/modules/core` (shared API/query client/layouts)
+  and `src/modules/auth` (components, hooks, libs). Simplified landing and fallback
+  handling by redirecting to `/app` and letting the layouts decide.
+- **Why:** Keep route definitions small and conventional, centralize auth checks in
+  layouts, and give the React app clear module boundaries.
+- **Impact:** `@tanstack/router-plugin` and `@tanstack/router-cli` added; the Vite
+  plugin generates `src/routeTree.gen.ts`. `apps/web` source moved into `modules`.
+  No API or product behavior changes.
+- **Files:** `apps/web`, `AGENTS.md`, `README.md`, `AI.md`, `plan.md`, `tasks.md`.
+- **Status:** implemented; screens still pending.
+
+### 2026-11-11 — Root-layout auth gate without beforeLoad or cache writes
+
+- **Requested by:** Developer
+- **Request:** “avoid using beforeLoad for auth check. just use query hook at root
+  layout with a loading view, redirect according to query results.” and “avoid
+  manually setting query cache”.
+- **Change:** Removed auth checks from route `beforeLoad` hooks. The root layout now
+  runs the `/users/me` query, shows a loading view while it settles, and redirects
+  based on the result. `_auth`/`_app` are presentational layouts. Removed the
+  `setCurrentUser`/manual `setQueryData` path. The root query suppresses the global
+  401 redirect so auth pages can render while signed out.
+- **Why:** Keep one auth-state source and one redirect decision in the root layout,
+  and let TanStack Query own the cache.
+- **Impact:** Web-only; no API or product behavior changes.
+- **Files:** `apps/web`, `AGENTS.md`, `README.md`, `AI.md`, `plan.md`, `tasks.md`.
+- **Status:** implemented.
+
+### 2026-11-11 — Use TanStack Router Navigate, not useEffect
+
+- **Requested by:** Developer
+- **Request:** “use the Tanstack router <Navigate> instead of useEffect. never use
+  useEffect unless very necessary”.
+- **Change:** The root layout renders `<Navigate>` for auth redirects and keeps
+  `useEffect` out of the redirect path. The no-`useEffect` rule is recorded for
+  future React work.
+- **Why:** Keep redirects declarative and avoid effect-driven navigation.
+- **Impact:** Web-only; no API or product behavior changes.
+- **Files:** `apps/web`, `AGENTS.md`, `AI.md`, `plan.md`, `tasks.md`.
+- **Status:** implemented.
+
+### 2026-11-11 — Public User contract and final web module folders
+
+- **Requested by:** Developer
+- **Request:** “I made some changes. check them to see how the frontend should be
+  structured. update docs accordingly and fix errors”.
+- **Change:** Renamed the public contract type `PublicUser` to `User` and updated API
+  imports to match. Settled the web module layout: `modules/auth` has `layouts`,
+  `pages`, `queries`, and `lib`; `modules/core` has `layouts`, `pages`, `components`,
+  and `lib`. The application page lives in `core/pages`; the auth root gate lives in
+  `core/layouts`; route files remain thin.
+- **Why:** Use one public user type and make the module boundaries explicit.
+- **Impact:** API type imports, web imports, docs, and plans updated. No API behavior
+  changes.
+- **Files:** `packages/contract`, `apps/api`, `apps/web`, `AGENTS.md`, `README.md`,
+  `AI.md`, `plan.md`, `tasks.md`.
+- **Status:** implemented.
+
+### 2026-11-11 — beforeLoad route guards (reverses the root-layout gate)
+
+- **Requested by:** Developer
+- **Request:** “fix the auth check and redirects on frontend. use proper pattern
+  according to community standards and best practices”. When asked, the developer
+  chose `beforeLoad` + `redirect` over keeping the no-`beforeLoad` rule.
+- **Change:** Replaced the root-layout query gate with TanStack Router’s documented
+  pattern: `_app`/`_auth` `beforeLoad` guards using
+  `queryClient.ensureQueryData(currentUserQueryOptions)` and `throw redirect()`, a
+  validated same-origin `?redirect=` return path, `{ currentUser }` route context,
+  and the router `defaultPendingComponent`. `/users/me` now resolves to
+  `User | null` (401 = signed out). The Axios 401 handler no longer sets
+  `window.location`; it calls `resetAuthState` (clear cache + `router.invalidate()`).
+  Query key is `['auth', 'current-user']`. Removed `core/layouts/root-layout.tsx`.
+- **Why:** The old gate never redirected, and the global 401 handler reloaded
+  `/signin` in a loop for signed-out users.
+- **Impact:** Web-only; no API changes. Sign-in/up/reset/sign-out screens should
+  call `resetAuthState` on success and let the guards navigate.
+- **Files:** `apps/web`, `AGENTS.md`, `README.md`, `apps/web/README.md`, `AI.md`,
+  `plan.md`, `tasks.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

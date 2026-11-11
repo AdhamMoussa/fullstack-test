@@ -22,7 +22,7 @@ current.
 - [x] Install API dependencies: `@nestjs/authentication`, `@nestjs/config`,
       `@nestjs/mail`, and `zod` for env validation. Optional `@nestjs/throttler` is
       deferred. Do not add `@nestjs/jwt` or argon2.
-- [x] Update `AuthResponse` to `{ user: PublicUser }` with no `accessToken`; keep the
+- [x] Update `AuthResponse` to `{ user: User }` with no `accessToken`; keep the
       signup/signin public-user shape.
 - [x] Add `forgotPasswordInputSchema`/`ForgotPasswordInput` and
       `resetPasswordInputSchema`/`ResetPasswordInput` (matching `confirmPassword`).
@@ -107,21 +107,26 @@ current.
 
 ## 5. Web foundation
 
-- [ ] Install web dependencies: `@mantine/core`, `@mantine/hooks`,
+- [x] Install web dependencies: `@mantine/core`, `@mantine/hooks`,
       `@tanstack/react-query`, `@tanstack/react-router`, `axios`,
       `react-hook-form`, `@hookform/resolvers`, and `zod`.
-- [ ] Keep `@repo/contract` as the source of schemas/types.
-- [ ] Add `MantineProvider`, one `QueryClient`, and `RouterProvider` in
+- [x] Keep `@repo/contract` as the source of schemas/types.
+- [x] Add `MantineProvider`, one `QueryClient`, and `RouterProvider` in
       `src/main.tsx`; import Mantine styles.
-- [ ] Add `src/lib/api.ts`: Axios instance from `VITE_API_URL` with
+- [x] Add `src/modules/core/lib/api.ts`: Axios instance from `VITE_API_URL` with
       `withCredentials: true`; no token interceptor/localStorage.
-- [ ] Add `src/auth/` with the `/users/me` query, query keys, and sign-in/out helpers.
-      `401` on protected requests clears the cache and redirects; auth form requests
-      keep their errors visible.
-- [ ] Add code-based TanStack Router routes: `/signup`, `/signin`,
+- [x] Add `src/modules/auth/` with `layouts`, `pages`, `queries`, and `lib`: the
+      `/users/me` query, query key, and sign-in/out helpers. `401` on protected
+      requests clears the cache and redirects; auth form requests keep their errors
+      visible.
+- [x] Add TanStack Router file-based routes: `/signup`, `/signin`,
       `/forgot-password`, `/reset-password`, `/app`, and a fallback redirect.
-- [ ] Guard `/app` with `beforeLoad`/equivalent, waiting for `/users/me`; redirect
-      signed-out users to `/signin` and signed-in users away from auth pages.
+- [x] Guard auth in `beforeLoad` on `_app` (signed-in only, returns
+      `{ currentUser }`) and `_auth` (signed-out only, validated `?redirect=`) using
+      `ensureQueryData(currentUserQueryOptions)` + `throw redirect()`; router
+      `defaultPendingComponent` is the loading view. 401s on protected requests
+      call `resetAuthState` (clear cache + `router.invalidate()`). Do not write the
+      query cache manually or use `useEffect` for redirects/derived state.
 
 ## 6. Auth screens
 
@@ -129,17 +134,17 @@ current.
       `zodResolver(signUpInputSchema)`; fields: email, name, password,
       confirm password; show field errors and server 400/409 errors.
 - [ ] Build `/signin` with email/password; generic 401 error; disable submit while
-      pending; link to `/forgot-password`; success seeds the user query and goes to
-      `/app`.
+      pending; link to `/forgot-password`; success calls `resetAuthState` and the
+      `_auth` guard goes to `?redirect=` or `/app`.
 - [ ] Build `/forgot-password` with email and a generic “if an account exists”
       success state.
 - [ ] Build `/reset-password` reading `token` from the query string, with password +
-      confirmation, missing/invalid-link handling, and success going to `/app`
-      (the API signs the user in).
+      confirmation, missing/invalid-link handling, and success calling
+      `resetAuthState` so the guard goes to `/app` (the API signs the user in).
 - [ ] Build `/app` with the exact text `Welcome to the application.`, user details,
       and logout.
-- [ ] Logout calls `/auth/sign-out`, clears the token-free auth state/query cache,
-      and navigates to `/signin`.
+- [ ] Logout calls `/auth/sign-out`, then `resetAuthState` (clears the query cache
+      and re-runs guards, which redirect to `/signin`).
 - [ ] Verify no auth token is written to `localStorage`/`sessionStorage`; the cookie
       is httpOnly.
 - [ ] Verify forms work with keyboard and visible labels; add a password visibility

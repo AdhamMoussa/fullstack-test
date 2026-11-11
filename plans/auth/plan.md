@@ -40,7 +40,7 @@ React forms.
 ## Current state
 
 - `packages/contract` exports signup/signin/forgot/reset input schemas,
-  `userSchema`/`PublicUser` (with `emailVerified`), token-free
+  `userSchema`/`User` (with `emailVerified`), token-free
   `authResponseSchema`/`AuthResponse`, and `apiErrorSchema`/`ApiError`. Contract
   tests pass (19).
 - `packages/db` has `User` (`emailVerified` included), `AuthSession`, and
@@ -64,13 +64,16 @@ React forms.
 - Task #1 (dependencies, contract, schema), Task #2 (authentication store),
   Task #3 (API foundation), and Task #4 (API e2e tests) are complete. The e2e suite
   covers auth, users, password reset, CSRF, and routing, and also runs the store
-  contract: 31 tests passing. The frontend is next.
-- `apps/web` is a Vite React scaffold wired into Docker with `@repo/contract` as a
-  dependency; TanStack Router/Query, Axios, Mantine, forms, and the auth UI are not
-  set up yet.
+  contract: 31 tests passing.
+- `apps/web` has the foundation in place: Mantine providers, one `QueryClient`,
+  TanStack Router file-based routes, the credentialed Axios client, `/users/me` query
+  keys and API helpers, and `beforeLoad` auth guards on the `_app`/`_auth` layout
+  routes with a router pending view. Screens are placeholders until Task #6.
+- Task #5 (web foundation) is complete; the auth screens are next.
 - Docker Compose runs `mongo`, `db`, `contract`, `api`, and `web`; all ports are
   loopback-only. `db` pushes the schema to both the dev and test databases.
-- Root scripts run through the `api`/`db` containers; Oxlint is the linter.
+- Root scripts run through the `api`/`db` containers; Oxlint is the linter and
+  Prettier formats the workspace.
 
 ## Decisions
 
@@ -104,14 +107,15 @@ React forms.
 8. **Users module.** `UsersModule` owns `GET /users/me` and uses the package's
    `@CurrentUser()` decorator. `AuthModule` owns `/auth/*` and exports whatever the
    users controller needs; `/auth/me` is not registered.
-9. **Contract changes.** `AuthResponse` becomes `{ user: PublicUser }` with no
+9. **Contract changes.** `AuthResponse` becomes `{ user: User }` with no
    `accessToken`. Add `ForgotPasswordInput` and `ResetPasswordInput`; reset includes
-   matching `confirmPassword`. Signup/signin/reset return `PublicUser` or the
+   matching `confirmPassword`. Signup/signin/reset return `User` or the
    `{ user }` envelope; no raw session token is returned.
 10. **Frontend cookie session.** Axios uses `withCredentials`; auth state is the
-    `/users/me` query, not a stored token. The `/app` route guard waits for that
-    query. Sign-out calls `POST /auth/sign-out` and clears the query cache. The 401
-    interceptor redirects protected requests, but leaves auth form errors visible.
+    `/users/me` query (`User | null`), not a stored token. The `_app`/`_auth`
+    `beforeLoad` guards await it with `ensureQueryData`. Sign-out calls
+    `POST /auth/sign-out` then `resetAuthState` (clear cache + `router.invalidate()`).
+    A 401 on a protected request does the same, so auth form errors stay visible.
 11. **CSRF/CORS.** Enable CORS with credentials for `WEB_ORIGIN`, enable the
     package's origin checks/`app.enableCsrfProtection()` on Nest 12.1+, and keep the
     frontend and API same-site. Avoid `SameSite=None`.
@@ -139,7 +143,7 @@ React forms.
 | `POST` | `/auth/signin`          | public         | 200 `{ user }`, sets session cookie | 400 validation, 401 bad credentials            |
 | `POST` | `/auth/forgot-password` | public         | 202, no body                        | 400 validation                                 |
 | `POST` | `/auth/reset-password`  | public         | 200 `{ user }`, sets session cookie | 400 validation, 400 invalid/expired/used token |
-| `GET`  | `/users/me`             | session cookie | 200 `PublicUser`                    | 401 missing/invalid session                    |
+| `GET`  | `/users/me`             | session cookie | 200 `User`                          | 401 missing/invalid session                    |
 | `POST` | `/auth/sign-out`        | session cookie | 204, clears cookie                  | 401/204 when already signed out                |
 
 Requests:
@@ -216,37 +220,46 @@ New setup:
   TanStack Query, and TanStack Router; use `@repo/contract` for schemas/types.
 - `src/main.tsx` — `MantineProvider` (with Mantine styles), one `QueryClient`, and
   `RouterProvider`.
-- `src/lib/api.ts` — one Axios instance using `VITE_API_URL` and
-  `withCredentials: true`; no token interceptor. The 401 interceptor clears auth
-  state/query cache and redirects for protected requests, but exempts auth form
-  requests (`/auth/signup`, `/auth/signin`, `/auth/forgot-password`,
-  `/auth/reset-password`) so form errors stay visible.
-- `src/auth/` — auth query (`/users/me`), query keys, and sign-in/sign-out helpers;
-  no localStorage or bearer-token code.
-- `src/router.tsx` — code-based routes `/signup`, `/signin`, `/forgot-password`,
-  `/reset-password`, `/app`; `/app` has a `beforeLoad`/auth guard that waits for
-  `/users/me`; authenticated users are redirected away from auth pages; unknown
-  routes go to `/`.
+- `src/modules/core/` — shared code: `lib/api.ts` and `lib/query-client.ts`,
+  `layouts/app-layout.tsx`, `components/loading-screen.tsx` (router pending view),
+  and `pages/application-page.tsx` (reads `currentUser` from `_app` route context).
+- `src/modules/auth/` — auth module: `layouts/auth-layout.tsx`, `pages/*` for the
+  auth screens, `queries/current-user-query.ts` for the `/users/me` query
+  (`User | null`), and `lib/` with `auth.api.ts`, `route-guards.ts`
+  (`requireSignedInUser`/`requireSignedOutUser`), `auth-search.ts` (same-origin
+  `redirect` param), and `auth-session.ts` (`resetAuthState`). No localStorage or
+  bearer-token code.
+- `src/routes/` — TanStack Router file-based routes. `_app` `beforeLoad` redirects
+  signed-out users to `/signin?redirect=<href>` and returns `{ currentUser }`;
+  `_auth` `beforeLoad` sends signed-in users to `redirect` or `/app`. `/` and the
+  catch-all redirect to `/app` in `beforeLoad`. `src/routeTree.gen.ts` is generated
+  by the router plugin/CLI, never edited by hand. Do not write the current-user
+  query cache manually or use `useEffect` for redirects/derived state.
+- `src/router.tsx` — creates the router with `{ queryClient }` context and
+  `defaultPendingComponent`, and registers `onUnauthorized` so a 401 from a
+  protected request runs `resetAuthState`. Auth form requests (`/auth/signup`,
+  `/auth/signin`, `/auth/forgot-password`, `/auth/reset-password`) are exempt so form
+  errors stay visible; `/users/me` treats 401 as `null` and never triggers it.
 
 Pages:
 
 - **Signup** (`/signup`): Mantine inputs for email, name, password, and
   confirmation; `react-hook-form` with `zodResolver(signUpInputSchema)`; field-level
-  errors; server 400/409 errors mapped onto the form; success stores the returned
-  user in the query cache and navigates to `/app`.
+  errors; server 400/409 errors mapped onto the form; success calls
+  `resetAuthState` and the `_auth` guard navigates to `/app`.
 - **Signin** (`/signin`): email and password with `signInInputSchema`; generic
-  credentials error; link to `/forgot-password`; success seeds the user query and
-  navigates to `/app`.
+  credentials error; link to `/forgot-password`; success calls `resetAuthState` and
+  the `_auth` guard navigates to `?redirect=` or `/app`.
 - **Forgot password** (`/forgot-password`): email with
   `forgotPasswordInputSchema`; generic “if an account exists” success message; no
   email enumeration.
 - **Reset password** (`/reset-password?token=...`): reads the token from the query
   string, asks for password + confirmation with `resetPasswordInputSchema`, shows a
-  missing/invalid-link state, and on success seeds the user query and goes to
-  `/app`.
+  missing/invalid-link state, and on success calls `resetAuthState` so the guard
+  goes to `/app`.
 - **Application** (`/app`): displays exactly `Welcome to the application.`, the
-  user's name/email, and a logout button that calls `/auth/sign-out`, clears the
-  query cache, and navigates to `/signin`.
+  user's name/email, and a logout button that calls `/auth/sign-out` then
+  `resetAuthState`; the `_app` guard redirects to `/signin`.
 
 Accessibility/UI: visible labels, keyboard submission, disabled submit while
 pending, and a password visibility toggle or equivalent. Keep the design simple and

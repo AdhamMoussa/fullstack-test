@@ -1,6 +1,6 @@
 # @repo/web
 
-React + Vite frontend. The scaffold is in place; auth screens are not built yet. Setup, services, and scripts are in the [root README](../../README.md).
+React + Vite frontend with Mantine, TanStack Query, file-based TanStack Router, Axios, and `beforeLoad` auth guards on the `_app`/`_auth` layout routes (backed by the `/users/me` query via `ensureQueryData`). Shared code lives in `src/modules/core` (`lib`, `layouts`, `components`, `pages`); auth code lives in `src/modules/auth` (`layouts`, `pages`, `queries`, `lib`); `src/routes` contains thin route files. The auth screens are still placeholders. Setup, services, and scripts are in the [root README](../../README.md).
 
 Local dev runs from the repo root:
 

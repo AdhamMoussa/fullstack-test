@@ -5,19 +5,30 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "routes:generate": "tsr generate",
+    "build": "pnpm routes:generate && tsc -b && vite build",
     "lint": "oxlint src vite.config.ts",
-    "typecheck": "tsc -b",
+    "typecheck": "pnpm routes:generate && tsc -b",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^7.0.5",
+    "@mantine/core": "^9.8.0",
+    "@mantine/hooks": "^9.8.0",
     "@repo/contract": "workspace:*",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-router": "^1.170.46",
+    "axios": "^1.21.1",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-hook-form": "^7.92.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@rolldown/plugin-babel": "^0.3.0",
+    "@tanstack/router-cli": "^1.168.0",
+    "@tanstack/router-plugin": "^1.169.0",
     "@types/babel__core": "^7.20.5",
     "@types/node": "catalog:",
     "@types/react": "^19.3.0",

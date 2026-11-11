@@ -21,6 +21,8 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
 - The Nest auth/config/mail wiring, session provider, credentials service, and the
   auth/users endpoints.
 - The auth/users e2e suite and its cookie/in-memory-mail test harness.
+- The web foundation: Mantine/Query/Router providers, the Axios auth client,
+  auth query/guard helpers, file-based routes, and the modular web structure.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
@@ -91,6 +93,22 @@ that did not match the architecture or product requirements.
 - **Type-aware linting and formatting.** I enabled type-aware Oxlint for the API with
   `oxlint-tsgolint`, and added a Prettier configuration with `format`/`format:check`
   scripts; Oxlint remains the linter.
+- **Web routing and structure.** I required TanStack Router file-based routes and a
+  modular `core`/`auth` split instead of a manual route tree and a flat `src` layout.
+- **Auth guards.** I first required a root-layout `/users/me` query with
+  `<Navigate>` redirects instead of `beforeLoad`. That version had a reload loop: the
+  global 401 handler did `window.location.href = '/signin'` even on `/signin`, and
+  nothing redirected. I then asked AI to “fix the auth check and redirects … according
+  to community standards”. AI proposed TanStack Router’s documented pattern, and I
+  chose it: `beforeLoad` guards on `_app`/`_auth` using `ensureQueryData` and
+  `throw redirect()`, a validated `?redirect=` return path, and `resetAuthState`
+  (cache clear + `router.invalidate()`) on session changes and 401s. The query
+  cache is still never written by hand.
+- **No `useEffect` for redirects or derived state.** I require router primitives
+  for redirects and derived render state instead of effects.
+- **Public contract name and module folders.** I renamed `PublicUser` to `User` and
+  settled the web layout: auth `layouts`/`pages`/`queries`/`lib`; core
+  `layouts`/`pages`/`components`/`lib`.
 - **Expressive naming.** I require method and variable names to state intent instead
   of generic placeholders such as `verify`, `found`, or `valid`.
 
