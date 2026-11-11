@@ -7,7 +7,7 @@
       "outputs": ["dist/**"]
     },
     "typecheck": {
-      "dependsOn": ["generate", "^typecheck"]
+      "dependsOn": ["generate", "^build"]
     }
   }
 }

@@ -365,6 +365,30 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/changes.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Turbo task graph builds shared packages first
+
+- **Requested by:** Developer
+- **Request:** CI follow-up (the developer is driving the CI fixes). The clean
+  checkout failed `pnpm typecheck:inner` with "Cannot find module `@repo/contract`"
+  and "`@repo/db` or its corresponding type declarations", and type-aware lint
+  reported `User`/`Prisma.InputJsonValue` as `error` types.
+- **Change:** The root `turbo.json` now makes `lint`, `typecheck`, and `test` depend
+  on `^build` instead of `^lint`/`^typecheck`/`^test`; `packages/db/turbo.json` keeps
+  `build` as `["generate", "^build"]` and changes `typecheck` from
+  `["generate", "^typecheck"]` to `["generate", "^build"]`. `build` stays
+  `["^build"]` with `outputs: ["dist/**"]`, and `generate` stays uncached.
+- **Why:** The shared packages (`@repo/contract`, `@repo/db`) point `main`/`types`/
+  `exports` at `dist`, which tsup produces. On a clean checkout nothing built those
+  packages before lint/typecheck/test, so module resolution and typed lint failed.
+  The dev watchers (`tsup --watch`) kept `dist` present locally and hid the bug.
+- **Impact:** Root `pnpm typecheck`/`lint`/`test` now also build the shared packages
+  first, usually as Turbo cache hits. `@repo/api#typecheck` reaches
+  `@repo/db#build` → `@repo/db#generate` through `^build`, so the Prisma client is
+  still generated. No app, contract, or product changes.
+- **Files:** `turbo.json`, `packages/db/turbo.json`, `AGENTS.md`,
+  `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

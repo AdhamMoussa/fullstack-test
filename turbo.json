@@ -6,13 +6,13 @@
       "outputs": ["dist/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^build"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^test"]
+      "dependsOn": ["^build"]
     },
     "generate": {
       "cache": false
