@@ -3,7 +3,7 @@
 ## Repo state
 
 - Greenfield full-stack assessment defined by `Full_Stack_Test_Task.pdf` (auth module). If `apps/` is missing, scaffold it using the layout below.
-- The PDF is the source of truth. If direct PDF reading is unavailable, extract it with:
+- The PDF is a local, untracked file excluded via `.git/info/exclude`; it is marked Internal and must never be committed. It is the source of truth. If direct PDF reading is unavailable, extract it with:
   `gs -q -sDEVICE=txtwrite -o - Full_Stack_Test_Task.pdf`
 - Submission is a public GitHub repo; keep `README.md` and `AI.md` at the root.
 

@@ -2,7 +2,7 @@
 
 **Status:** `@nestjs/authentication` adopted; Tasks #1–#7 complete; structured request logging and auth audit logging added
 **Last updated:** 2026-11-11
-**Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
+**Source of truth:** the assessment brief (a local, untracked PDF) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
 **Change log:** [`changes.md`](./changes.md)
 

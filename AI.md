@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-11-11
 **Project:** Full-stack auth assessment
-**Assessment brief:** [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf)
+**Assessment brief:** the recruiter's full-stack test task (not included in this repo)
 
 This is the required AI usage record for the assessment. It covers which parts of
 the project were AI-assisted, the approaches that worked, what I corrected or

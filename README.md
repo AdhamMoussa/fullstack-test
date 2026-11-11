@@ -1,6 +1,6 @@
 # Auth Assessment
 
-Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
+Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. It implements the recruiter's assessment brief (not included in this repo).
 
 > **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, `/users/me`, structured request logging, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-up not done: production email delivery.
 
