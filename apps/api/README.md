@@ -1,18 +1,15 @@
-# API
+# @repo/api
 
-NestJS 12 ESM app (`@repo/api`). See the root `AGENTS.md` for repo conventions and `Full_Stack_Test_Task.pdf` for requirements.
+NestJS 12 API (ESM). Setup, scripts, environment variables and the endpoint list are in the [root README](../../README.md).
 
-## Commands
+## Development notes
 
-Run from the repo root:
+- Runs in the `api` Compose service. `nodemon` restarts `nest start -b swc` when `src/`, `packages/db/dist`, or the generated Prisma client changes.
+- SWC is used only for fast dev restarts and does not type-check. `pnpm typecheck` and `nest build` do.
+- ESM: relative imports end in `.js`; tests use Vitest (`vi.fn()`, not `jest.fn()`).
+- Tests use the `assessment_test` database (`MONGODB_TEST_URI`), never the dev database.
 
-- `pnpm --filter @repo/api dev` — Turbo-managed, no extra watcher
-- `pnpm --filter @repo/api start:dev` — standalone watch mode; do not run alongside root `pnpm dev`
-- `pnpm --filter @repo/api build`
-- `pnpm --filter @repo/api start:prod`
-- `pnpm --filter @repo/api lint`
-- `pnpm --filter @repo/api typecheck`
-- `pnpm --filter @repo/api test`
-- `pnpm --filter @repo/api test:e2e`
-
-The API listens on port 3000.
+```bash
+docker compose exec api pnpm --filter @repo/api test
+docker compose exec api pnpm --filter @repo/api test:e2e
+```

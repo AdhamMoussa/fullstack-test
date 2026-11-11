@@ -3,11 +3,21 @@
   "private": true,
   "packageManager": "pnpm@11.0.5",
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo watch dev",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "dev": "docker compose up --build --renew-anon-volumes",
+    "dev:down": "docker compose down",
+    "build": "docker compose exec api pnpm build:inner",
+    "build:inner": "turbo run build",
+    "lint": "docker compose exec api pnpm lint:inner",
+    "lint:inner": "turbo run lint",
+    "typecheck": "docker compose exec api pnpm typecheck:inner",
+    "typecheck:inner": "turbo run typecheck",
+    "test": "docker compose exec api pnpm test:inner",
+    "test:inner": "turbo run test",
+    "db:generate": "docker compose exec db pnpm --filter @repo/db generate",
+    "db:push": "docker compose exec db pnpm --filter @repo/db push",
+    "db:studio": "docker compose exec db pnpm --filter @repo/db studio",
+    "infra:dev": "docker compose up -d mongo",
+    "infra:dev:down": "docker compose stop mongo"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",

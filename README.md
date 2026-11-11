@@ -1,0 +1,106 @@
+# Auth Assessment
+
+Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
+
+> **Status:** work in progress. The workspace, Docker dev stack, and database package are in place. The auth endpoints, `packages/contract`, and `apps/web` are not built yet.
+
+## Layout
+
+| Path | Package | What it is |
+| --- | --- | --- |
+| `apps/api` | `@repo/api` | NestJS 12 API (ESM) |
+| `apps/web` | `@repo/web` | React + Vite frontend (planned) |
+| `packages/db` | `@repo/db` | Prisma 6 schema and client for MongoDB (server-only) |
+| `packages/contract` | `@repo/contract` | Shared Zod request/response schemas (planned) |
+
+## Prerequisites
+
+- **Docker Desktop**. Everything runs in containers.
+- **Node 26 and pnpm 11** on the host. You need them to install dependencies (this updates `pnpm-lock.yaml`), to give your editor types and linting, and to run the root scripts. The apps don't run on the host.
+
+## Quick start
+
+```bash
+pnpm install   # host: lockfile, editor types, Biome
+pnpm dev       # builds images and starts mongo, db, api in the foreground
+```
+
+The API is at http://localhost:3000. Stop the stack with `Ctrl+C`, or run `pnpm dev:down`.
+
+No `.env` file is needed: `compose.yaml` provides development defaults.
+
+## Services
+
+| Service | Port (localhost only) | What it does |
+| --- | --- | --- |
+| `mongo` | 27017 | MongoDB 8, single-node replica set `rs0` (Prisma needs transactions) |
+| `db` | 5555 (Prisma Studio) | Generates the Prisma client and pushes the schema to the dev and test databases, then rebuilds `packages/db` on change (`tsup --watch`) |
+| `api` | 3000 | Runs Nest via `nodemon` → `nest start -b swc`. It restarts when `apps/api/src`, the built `@repo/db`, or the generated Prisma client changes |
+
+Source code is bind-mounted into the containers, so edits apply immediately. Each container has its own `node_modules`; your host's `node_modules` is never used inside them.
+
+## Everyday workflows
+
+| Task | Do this |
+| --- | --- |
+| Edit API code | Save. The API restarts in about a second. |
+| Edit `packages/db/src` | Save. `db` rebuilds and the API restarts. |
+| Change the Prisma schema | `pnpm db:generate && pnpm db:push` (the API restarts after generation) |
+| Add/upgrade a dependency | `pnpm --filter <pkg> add <dep>` on the host, then restart `pnpm dev` (it rebuilds images and refreshes container `node_modules`) |
+| Inspect data | `pnpm db:studio`, then open http://localhost:5555, or connect any Mongo client to `mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true` |
+| Start from an empty database | `docker compose down -v` (deletes all Mongo data), then `pnpm dev` |
+
+## Scripts
+
+Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs inside the running containers, so start `pnpm dev` first.
+
+| Script | What it does |
+| --- | --- |
+| `pnpm dev` | Build images, renew `node_modules` volumes, and start all services |
+| `pnpm dev:down` | Stop and remove the containers (Mongo data is kept) |
+| `pnpm build` | Build all packages and apps (Turbo) |
+| `pnpm lint` | Biome check for the whole workspace |
+| `pnpm typecheck` | `tsc --noEmit` for the whole workspace |
+| `pnpm test` | Unit tests (Vitest) |
+| `pnpm db:generate` | Regenerate the Prisma client |
+| `pnpm db:push` | Push the schema (indexes) to the dev database |
+| `pnpm db:studio` | Prisma Studio on http://localhost:5555 |
+| `pnpm infra:dev` / `pnpm infra:dev:down` | Start/stop MongoDB only |
+
+## Tests
+
+```bash
+pnpm test                                                        # unit tests
+docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
+docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
+```
+
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts.
+
+## Environment variables
+
+Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` and `packages/db` show the values to use if you run something on the host instead.
+
+| Variable | Used by | Docker dev value |
+| --- | --- | --- |
+| `MONGODB_URI` | api, db | `mongodb://mongo:27017/assessment?replicaSet=rs0` |
+| `MONGODB_TEST_URI` | api, db (tests) | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
+| `PORT` | api | `3000` |
+| `JWT_SECRET` | api | `dev-only-change-me` (override from your shell) |
+| `JWT_EXPIRES_IN` | api | `1h` |
+| `WEB_ORIGIN` | api (CORS) | `http://localhost:5173` |
+
+## API
+
+| Method | Path | Auth | Status |
+| --- | --- | --- | --- |
+| `GET` | `/` | none | Scaffold endpoint, returns `Hello World!` |
+| `POST` | `/auth/signup` | none | Planned: 201 with token and user; 400 for invalid input, 409 for duplicate email |
+| `POST` | `/auth/signin` | none | Planned: 200 with token and user; 401 for bad credentials |
+| `GET` | `/auth/me` | Bearer JWT | Planned: 200 with user; 401 without a valid token |
+
+## Troubleshooting
+
+- **A new dependency isn't found in a container.** Restart with `pnpm dev`; plain `docker compose up` keeps the old `node_modules` volumes.
+- **`pnpm build`/`test` says the service isn't running.** Start the stack with `pnpm dev` first.
+- **The API doesn't reflect a schema change.** Run `pnpm db:generate` (and `pnpm db:push` for new indexes).
