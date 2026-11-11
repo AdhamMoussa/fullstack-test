@@ -221,6 +221,29 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/{plan,tasks}.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Structured request logging
+
+- **Requested by:** Developer
+- **Request:** “add structured request logging”.
+- **Change:** Added structured JSON logging without a new dependency: `main.ts`
+  creates the app with Nest's built-in `ConsoleLogger` (`json`, `flattenParams`); a
+  request middleware registered before the security-header/CSRF hooks logs one `HTTP`
+  line per request (with a validated or generated `X-Request-Id` echoed back); and
+  `AuthAuditLogger` subscribes to the package's `AuthenticationEvents` and logs
+  only allowlisted fields.
+- **Why:** Give every request and auth action a structured, correlatable log line
+  without adding pino/winston, and log only fields that are safe to retain.
+- **Impact:** JSON log lines on stdout instead of Nest's text format, a new
+  `X-Request-Id` response header, new API unit tests for the middleware and the audit
+  logger, and no new dependency or endpoint behavior change. Bodies, cookies, tokens,
+  query strings, and emails stay out of the logs.
+- **Files:** `apps/api/src/main.ts`,
+  `apps/api/src/logging/request-logging.middleware.ts` (+ spec),
+  `apps/api/src/auth/auth-audit.logger.ts` (+ spec),
+  `apps/api/src/auth/auth.module.ts`, `README.md`, `AGENTS.md`, `AI.md`,
+  `plans/auth/{plan,tasks,changes}.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

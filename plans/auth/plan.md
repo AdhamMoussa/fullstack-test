@@ -1,6 +1,6 @@
 # Auth Feature Plan
 
-**Status:** `@nestjs/authentication` adopted; Tasks #1–#7 complete; optional follow-ups (throttling, request logging) are deferred
+**Status:** `@nestjs/authentication` adopted; Tasks #1–#7 complete; structured request logging and auth audit logging added
 **Last updated:** 2026-11-11
 **Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
@@ -78,6 +78,12 @@ React forms.
   `src/modules/auth/queries/auth-mutations.ts`, and guard-driven redirects.
 - Task #5 (web foundation) and Task #6 (auth screens) are complete, as is Task #7
   (verification and delivery).
+- API logging is structured JSON with no extra dependency: `main.ts` creates the app
+  with Nest's built-in `ConsoleLogger` (`json`, `flattenParams`), a middleware
+  registered before the security/CSRF hooks logs one `HTTP` line per request and
+  echoes a validated or generated `X-Request-Id`, and `AuthAuditLogger` subscribes to
+  the package's `AuthenticationEvents` for sign-in/sign-out/reset/verification audit
+  lines. Bodies, cookies, tokens, query strings, and emails are never logged.
 - Verification (2026-11-11, Docker stack): `pnpm lint`, `pnpm typecheck`,
   `pnpm test`, and `pnpm build` pass; `pnpm test` runs 19 contract tests and 1 API
   unit test, and the only build warning is Vite's >500 kB chunk advisory. The API
@@ -229,7 +235,6 @@ Behavior:
 6. Sign-out uses the package's session handling, clears the cookie, and returns 204.
 7. `main.ts` enables Helmet, CORS with credentials for `WEB_ORIGIN`, and
    `app.enableCsrfProtection()` on Nest 12.1+ with the same trusted origins.
-   Optional: rate-limit auth routes with `@nestjs/throttler`.
 
 ## Frontend design
 

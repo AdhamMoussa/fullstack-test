@@ -30,6 +30,8 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
 - The Swagger/OpenAPI setup: document config, the cookie security scheme,
   contract-schema response decorators, API-side schema ids, and the
   `openapi.e2e-spec.ts` document test.
+- The structured logging setup: the request-logging middleware, the `AuthAuditLogger`
+  over the authentication package's events, and their unit tests.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
 - Delivery verification: running the workspace checks and the API e2e suite, driving
@@ -141,6 +143,10 @@ that did not match the architecture or product requirements.
 - **API docs.** I asked for Swagger docs via `@nestjs/swagger`. The `/docs` and
   `/docs/json` paths, the non-production gating, and the API-side schema ids were
   AI proposals.
+- **Request logging.** I asked for structured request logging. The built-in JSON
+  `ConsoleLogger` instead of pino/winston, the logged field set, the
+  `X-Request-Id` validation/reuse, and the auth-audit field allowlist were AI
+  proposals.
 
 ## Architecture and stack
 

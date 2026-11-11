@@ -2,7 +2,7 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
 
-> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, `/users/me`, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-ups not done: auth rate limiting, structured request logging, and production email delivery.
+> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, `/users/me`, structured request logging, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-up not done: production email delivery.
 
 ## Layout
 
@@ -118,7 +118,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 1 API unit test; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 14 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
 
 ## Environment variables
 
@@ -161,6 +161,37 @@ Reset flow:
 4. The API marks the token used, updates the password, marks the email verified,
    signs the user in, and the app goes to `/app`.
 5. Reused, expired, or invalid links return 400 and the page offers a new link.
+
+## Logging
+
+The API writes JSON lines to stdout with Nest's built-in `ConsoleLogger`
+(`json` + `flattenParams`); no logging library is added.
+
+- One `HTTP` line per request, written when the response closes: `requestId`,
+  `method`, `path` (query string removed), `statusCode`, `durationMs`, `ip`,
+  `userAgent`, `contentLength`, and `aborted` for client disconnects. A safe incoming
+  `X-Request-Id` is reused and otherwise generated, and it is echoed back on the
+  response.
+- `AuthAudit` lines from `@nestjs/authentication` events: sign-in, sign-out,
+  password-reset requested (`accountFound` only, never the address), password reset,
+  and email verified.
+- Request and response bodies, cookies, tokens, query strings, and email addresses
+  are never logged.
+
+Example `HTTP` line:
+
+```text
+{"level":"log","pid":1725,"timestamp":1794410926688,"message":"GET / 200","context":"HTTP","requestId":"319f6047-d668-4762-b634-bf7061fa02c3","method":"GET","path":"/","statusCode":200,"durationMs":10.8,"ip":"::ffff:172.20.0.1","userAgent":"curl/8.7.1","contentLength":12}
+```
+
+Example `AuthAudit` line:
+
+```text
+{"level":"log","pid":1725,"timestamp":1794410929737,"message":"auth.sign-in","context":"AuthAudit","userId":"6af489b188cd9eca145d0ea8","method":"password"}
+```
+
+Read them with `docker compose logs api`, or
+`docker compose logs api --no-log-prefix | jq` when `jq` is installed.
 
 ## API
 

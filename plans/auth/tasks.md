@@ -20,8 +20,8 @@ current.
 ## 1. Dependencies, contract, and schema
 
 - [x] Install API dependencies: `@nestjs/authentication`, `@nestjs/config`,
-      `@nestjs/mail`, and `zod` for env validation. Optional `@nestjs/throttler` is
-      deferred. Do not add `@nestjs/jwt` or argon2.
+      `@nestjs/mail`, and `zod` for env validation. Do not add `@nestjs/jwt` or
+      argon2.
 - [x] Update `AuthResponse` to `{ user: User }` with no `accessToken`; keep the
       signup/signin public-user shape.
 - [x] Add `forgotPasswordInputSchema`/`ForgotPasswordInput` and
@@ -82,8 +82,6 @@ current.
       `WEB_ORIGIN`, and `app.enableCsrfProtection()` on Nest 12.1+ with the same
       trusted origins. Nest's built-in headers match Helmet 8, so no Helmet
       dependency is needed.
-- [ ] Optional: add `@nestjs/throttler` definitions for signin/forgot by IP + account.
-      Deferred; not required for the assessment scope.
 - [x] Keep `PasswordHasher` (scrypt); no argon2/native build dependency.
 
 ## 4. API tests
@@ -171,7 +169,7 @@ current.
 - [x] Check no secrets/tokens are committed and `.env` files stay ignored.
 - [x] Optional: add Swagger/OpenAPI docs for the auth endpoints (`/docs`,
       `/docs/json`).
-- [ ] Optional: add structured request logging and auth rate limiting.
+- [x] Optional: add structured request logging.
 
 ## Definition of done
 
