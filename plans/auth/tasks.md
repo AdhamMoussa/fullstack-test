@@ -19,20 +19,20 @@ current.
 
 ## 1. Dependencies, contract, and schema
 
-- [ ] Install API dependencies: `@nestjs/authentication`, `@nestjs/config`,
-      `@nestjs/mail`, and optional `@nestjs/throttler`; add `zod` for env validation.
-      Do not add `@nestjs/jwt` or argon2.
-- [ ] Update `AuthResponse` to `{ user: PublicUser }` with no `accessToken`; keep the
+- [x] Install API dependencies: `@nestjs/authentication`, `@nestjs/config`,
+      `@nestjs/mail`, and `zod` for env validation. Optional `@nestjs/throttler` is
+      deferred. Do not add `@nestjs/jwt` or argon2.
+- [x] Update `AuthResponse` to `{ user: PublicUser }` with no `accessToken`; keep the
       signup/signin public-user shape.
-- [ ] Add `forgotPasswordInputSchema`/`ForgotPasswordInput` and
+- [x] Add `forgotPasswordInputSchema`/`ForgotPasswordInput` and
       `resetPasswordInputSchema`/`ResetPasswordInput` (matching `confirmPassword`).
-- [ ] Add contract tests for forgot/reset schemas and the token-free auth response.
-- [ ] Add `emailVerified Boolean @default(false)` to `User`.
-- [ ] Add `AuthSession` and `AuthEmailToken` Prisma models matching the package's
+- [x] Add contract tests for forgot/reset schemas and the token-free auth response.
+- [x] Add `emailVerified Boolean @default(false)` to `User`.
+- [x] Add `AuthSession` and `AuthEmailToken` Prisma models matching the package's
       `SessionStore` and `EmailTokenStore` interfaces (token hashes only, expiry,
       activity/purpose fields). Do not add `PasswordResetToken` or `RefreshToken`.
-- [ ] Run `pnpm db:generate` and `pnpm db:push`; verify both dev and test databases.
-- [ ] Update `AGENTS.md` for the package decision, cookie sessions, store contracts,
+- [x] Run `pnpm db:generate` and `pnpm db:push`; verify both dev and test databases.
+- [x] Update `AGENTS.md` for the package decision, cookie sessions, store contracts,
       and endpoint changes.
 
 ## 2. Authentication store

@@ -29,5 +29,22 @@ export const signInInputSchema = z.strictObject({
   password: z.string().min(1, 'Password is required.'),
 })
 
+export const forgotPasswordInputSchema = z.strictObject({
+  email: emailSchema,
+})
+
+export const resetPasswordInputSchema = z
+  .strictObject({
+    token: z.string().trim().min(1, 'Reset token is required.'),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Please confirm your new password.'),
+  })
+  .refine(({ password, confirmPassword }) => password === confirmPassword, {
+    error: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  })
+
 export type SignUpInput = z.infer<typeof signUpInputSchema>
 export type SignInInput = z.infer<typeof signInInputSchema>
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>

@@ -1,6 +1,6 @@
 # Auth Feature Plan
 
-**Status:** `@nestjs/authentication` adopted in the plan — implementation not started
+**Status:** `@nestjs/authentication` adopted; dependencies, contract, and schema groundwork done — auth implementation not started
 **Last updated:** 2026-11-11
 **Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
@@ -39,16 +39,18 @@ React forms.
 
 ## Current state
 
-- `packages/contract` exports `signUpInputSchema` (including `confirmPassword`),
-  `signInInputSchema`, `userSchema`/`PublicUser`, `authResponseSchema`/`AuthResponse`
-  (currently includes `accessToken`), and `apiErrorSchema`/`ApiError`. Contract tests
-  pass (11). Forgot/reset schemas are not added yet.
-- `packages/db` has the `User` model (`email` unique, `name`, `passwordHash`,
-  timestamps) and a lazy `getPrismaClient()`. Session/email-token models are not
-  added yet.
-- `apps/api` registers `StandardSchemaValidationPipe` as `APP_PIPE`, but has only
-  the scaffold `GET /` route. It has no auth/users modules, config module, or
-  authentication package.
+- `packages/contract` exports signup/signin/forgot/reset input schemas,
+  `userSchema`/`PublicUser` (with `emailVerified`), token-free
+  `authResponseSchema`/`AuthResponse`, and `apiErrorSchema`/`ApiError`. Contract
+  tests pass (19).
+- `packages/db` has `User` (`emailVerified` included), `AuthSession`, and
+  `AuthEmailToken`; the schema has been generated and pushed to the dev and test
+  databases.
+- `apps/api` has the auth/config/mail packages installed and
+  `StandardSchemaValidationPipe` registered, but no auth/users modules or
+  authentication code yet.
+- Task #1 (dependencies, contract, schema) is complete; Task #2 (authentication
+  store) and the API/frontend implementation are next.
 - `apps/web` is a Vite React scaffold wired into Docker with `@repo/contract` as a
   dependency; TanStack Router/Query, Axios, Mantine, forms, and the auth UI are not
   set up yet.

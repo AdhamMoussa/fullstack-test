@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
   // One bind-mounted client works on the host and in arm64/x86 Linux containers.
   binaryTargets = ["native", "linux-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
@@ -11,12 +11,48 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  email        String   @unique
-  name         String
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  email         String   @unique
+  name          String
+  passwordHash  String
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions    AuthSession[]
+  emailTokens AuthEmailToken[]
 
   @@map("users")
+}
+
+/// @nestjs/authentication SessionStore: id is the SHA-256 of the cookie token.
+model AuthSession {
+  id           String   @id @map("_id")
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id])
+  createdAt    DateTime
+  expiresAt    DateTime
+  lastActiveAt DateTime
+  mfa          String?
+  metadata     Json?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+/// @nestjs/authentication EmailTokenStore: id is the SHA-256 of the emailed token.
+model AuthEmailToken {
+  id          String   @id @map("_id")
+  purpose     String
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  email       String
+  fingerprint String?
+  createdAt   DateTime
+  expiresAt   DateTime
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("auth_email_tokens")
 }

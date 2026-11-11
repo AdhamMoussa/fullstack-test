@@ -5,12 +5,12 @@ export const userSchema = z.object({
   id: z.string().min(1),
   email: z.email(),
   name: z.string().min(3),
+  emailVerified: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
 
 export const authResponseSchema = z.object({
-  accessToken: z.string().min(1),
   user: userSchema,
 })
 

@@ -80,11 +80,11 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 
 - `signUpInputSchema` / `SignUpInput` — email, name (3+), password (8+, letter, number, special), and matching password confirmation
 - `signInInputSchema` / `SignInInput` — email and password
+- `forgotPasswordInputSchema` / `ForgotPasswordInput` — email
+- `resetPasswordInputSchema` / `ResetPasswordInput` — token, new password, and matching confirmation
 - `userSchema` / `PublicUser` — the public user shape (no password hash)
-- `authResponseSchema` / `AuthResponse` — access token plus user (the auth plan replaces this with `{ user }` and an httpOnly session cookie)
+- `authResponseSchema` / `AuthResponse` — `{ user }` only; the session is the httpOnly cookie
 - `apiErrorSchema` / `ApiError` — shared error response
-
-Planned additions (see `plans/auth/`): `forgotPasswordInputSchema`/`ForgotPasswordInput`, `resetPasswordInputSchema`/`ResetPasswordInput`, and the token-free `AuthResponse`.
 
 Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the web app will use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
 
