@@ -27,6 +27,9 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
   mutation hooks, server-error mapping onto the form fields, and the `/app` page
   with user details and logout.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
+- The Swagger/OpenAPI setup: document config, the cookie security scheme,
+  contract-schema response decorators, API-side schema ids, and the
+  `openapi.e2e-spec.ts` document test.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
 - Delivery verification: running the workspace checks and the API e2e suite, driving
@@ -135,6 +138,9 @@ that did not match the architecture or product requirements.
   from the current plan.
 - **The auth pages are part of the feature.** Signup, signin, forgot-password,
   reset-password, the protected `/app` page, and logout are in scope.
+- **API docs.** I asked for Swagger docs via `@nestjs/swagger`. The `/docs` and
+  `/docs/json` paths, the non-production gating, and the API-side schema ids were
+  AI proposals.
 
 ## Architecture and stack
 

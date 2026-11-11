@@ -103,7 +103,10 @@ current.
 - [x] CSRF: cross-origin state-changing request without a trusted origin is rejected.
 - [x] Confirm `/auth/me` is not registered.
 - [x] Clean up test users, sessions, and email tokens; run the store contract suite.
-- [x] Run `docker compose exec api pnpm --filter @repo/api test:e2e`.
+- [x] Add `test/openapi.e2e-spec.ts` covering `/docs/json` (paths, contract
+      component names, request/response refs, cookie security scheme) and `/docs`.
+- [x] Run `docker compose exec api pnpm --filter @repo/api test:e2e` (includes the
+      OpenAPI e2e spec).
 
 ## 5. Web foundation
 
@@ -166,7 +169,8 @@ current.
 - [x] Update `AGENTS.md` for any changed decisions.
 - [x] Update `AI.md` with the `@nestjs/authentication` decision and corrections.
 - [x] Check no secrets/tokens are committed and `.env` files stay ignored.
-- [ ] Optional: add Swagger/OpenAPI docs for the auth endpoints.
+- [x] Optional: add Swagger/OpenAPI docs for the auth endpoints (`/docs`,
+      `/docs/json`).
 - [ ] Optional: add structured request logging and auth rate limiting.
 
 ## Definition of done

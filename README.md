@@ -2,7 +2,7 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
 
-> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, and `/users/me`; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-ups not done: auth rate limiting, Swagger/OpenAPI, structured request logging, and production email delivery.
+> **Status:** the assessment scope is complete. The API covers signup/signin with server-side sessions, password reset, `/users/me`, and Swagger/OpenAPI docs; the shared contract drives API and form validation; a Prisma-backed store holds sessions and email tokens; and the React app has signup, signin, forgot/reset password, and a protected `/app` with logout. Optional follow-ups not done: auth rate limiting, structured request logging, and production email delivery.
 
 ## Layout
 
@@ -118,7 +118,7 @@ docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
 docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 1 API unit test; the e2e command runs 31 tests across the auth, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, and routing, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
+Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 1 API unit test; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases.
 
 ## Environment variables
 
@@ -128,6 +128,7 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | ---------------------- | ------------------------------ | ------------------------------------------------------ |
 | `MONGODB_URI`          | api, db                        | `mongodb://mongo:27017/assessment?replicaSet=rs0`      |
 | `MONGODB_TEST_URI`     | api, db (tests)                | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
+| `NODE_ENV`             | api (docs toggle)              | `development` (the docs are disabled in `production`)  |
 | `PORT`                 | api                            | `3000`                                                 |
 | `WEB_ORIGIN`           | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
 | `APP_URL`              | api (reset links)              | `http://localhost:5173`                                |
@@ -179,6 +180,18 @@ The contract `User` includes `id`, `email`, `name`, `emailVerified`, and ISO
 `createdAt`/`updatedAt` timestamps. Passwords, hashes, session tokens, and reset
 tokens never appear in responses. The reset URL is logged in development; set `SMTP_URL` to send
 real mail.
+
+## API docs
+
+Swagger UI is at http://localhost:3000/docs and the OpenAPI JSON at
+http://localhost:3000/docs/json. The docs are served when `NODE_ENV` is not
+`production`.
+
+Request bodies and responses are generated from the `@repo/contract` Zod schemas (with
+`@Body({ schema })` and `standardSchema` response decorators); there are no DTO
+classes. To try a protected route, call `POST /auth/signin` (or `/auth/signup`) in the
+UI first: the browser stores the httpOnly `__Host-sid` cookie, and "Try it out" on
+`GET /users/me` then works.
 
 ## Troubleshooting
 

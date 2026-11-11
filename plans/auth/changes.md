@@ -197,6 +197,30 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plan.md`, `tasks.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Swagger/OpenAPI docs
+
+- **Requested by:** Developer
+- **Request:** “implement API docs using Nestjs Swagger”
+- **Change:** Added `@nestjs/swagger` with Swagger UI at `/docs` and the OpenAPI
+  JSON at `/docs/json`, served when `NODE_ENV` is not `production`. Request bodies
+  come from the existing `@Body({ schema })` contract schemas; responses use
+  `standardSchema` decorators with `userSchema`, `authResponseSchema`, and
+  `apiErrorSchema`. The schemas get OpenAPI component ids API-side in
+  `apps/api/src/openapi/openapi-schema-ids.ts`, and the document declares a cookie
+  security scheme for `__Host-sid`. Added response decorators to the auth, users,
+  and app controllers and `test/openapi.e2e-spec.ts`.
+- **Why:** Browsable, contract-accurate API docs without DTO classes that duplicate
+  the shared schemas.
+- **Impact:** New dependency `@nestjs/swagger`; new `NODE_ENV` env var; docs routes
+  (disabled in production); new e2e spec. No API behavior changes.
+- **Files:** `apps/api/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`,
+  `apps/api/.env.example`, `apps/api/src/config/env.validation.ts`,
+  `apps/api/src/main.ts`, `apps/api/src/openapi/*`,
+  `apps/api/src/{auth,users}/**`, `apps/api/src/app.controller.ts`,
+  `apps/api/test/openapi.e2e-spec.ts`, `README.md`, `AGENTS.md`, `AI.md`,
+  `plans/auth/{plan,tasks}.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

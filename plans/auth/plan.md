@@ -1,6 +1,6 @@
 # Auth Feature Plan
 
-**Status:** `@nestjs/authentication` adopted; Tasks #1–#7 complete; optional follow-ups (throttling, Swagger, request logging) are deferred
+**Status:** `@nestjs/authentication` adopted; Tasks #1–#7 complete; optional follow-ups (throttling, request logging) are deferred
 **Last updated:** 2026-11-11
 **Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
@@ -63,8 +63,12 @@ React forms.
   No user-facing email-verification endpoint exists.
 - Task #1 (dependencies, contract, schema), Task #2 (authentication store),
   Task #3 (API foundation), and Task #4 (API e2e tests) are complete. The e2e suite
-  covers auth, users, password reset, CSRF, and routing, and also runs the store
-  contract: 31 tests passing.
+  covers auth, users, password reset, CSRF, routing, and the OpenAPI document, and
+  also runs the store contract: 36 tests passing.
+- API docs are served at `/docs` (Swagger UI) and `/docs/json` unless
+  `NODE_ENV=production`. They are set up in `apps/api/src/openapi/setup-openapi.ts`;
+  request bodies come from `@Body({ schema })` and responses from `standardSchema`
+  decorators, with component ids registered API-side. No DTO classes.
 - `apps/web` has the foundation in place: Mantine providers, one `QueryClient`,
   TanStack Router file-based routes, the credentialed Axios client, `/users/me` query
   keys and API helpers, and `beforeLoad` auth guards on the `_app`/`_auth` layout
@@ -77,7 +81,8 @@ React forms.
 - Verification (2026-11-11, Docker stack): `pnpm lint`, `pnpm typecheck`,
   `pnpm test`, and `pnpm build` pass; `pnpm test` runs 19 contract tests and 1 API
   unit test, and the only build warning is Vite's >500 kB chunk advisory. The API
-  e2e command passes 31 tests in 3 files (auth 16, store contract 14, app 1). The
+  e2e command passes 36 tests in 4 files (auth 16, OpenAPI 5, store contract 14,
+  app 1). The
   manual Chrome flow covered the signed-out `/app` redirect, signup validation and
   trimming, reload, sign-out/sign-in with the generic credentials error, the
   generic forgot-password state, the logged reset link (signs in and lands on
