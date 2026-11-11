@@ -307,6 +307,22 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/changes.md`.
 - **Status:** implemented (pending first run).
 
+### 2026-11-11 — CI MongoDB startup
+
+- **Requested by:** Developer
+- **Request:** The developer shared the failing "Start MongoDB" log from the first CI
+  run ("container fullstack-test-mongo-1 is unhealthy").
+- **Change:** CI starts Mongo with `docker run` plus an explicit replica-set
+  readiness loop instead of the dev Compose healthcheck, prints the container logs
+  on failure, and bumps `actions/checkout`, `actions/setup-node`, and
+  `pnpm/action-setup` to their node24 majors (`v7`, `v7`, `v6`).
+- **Why:** The runner marked the Compose healthcheck unhealthy within about 8 s,
+  which is far sooner than the dev `start_period`/retries allow; decoupling CI from
+  the dev healthcheck makes the job deterministic.
+- **Impact:** CI only. No app, contract, or product changes.
+- **Files:** `.github/workflows/ci.yml`, `AGENTS.md`, `AI.md`, `plans/auth/changes.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown

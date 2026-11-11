@@ -1,6 +1,6 @@
 # The root `pnpm lint|typecheck|test|build` scripts target the dev Compose
 # containers, so CI calls the `:inner` Turbo scripts directly on the runner and
-# starts only the `mongo` service from `compose.yaml`.
+# starts its own single-node MongoDB replica set.
 name: CI
 
 on:
@@ -28,13 +28,13 @@ jobs:
       TURBO_TELEMETRY_DISABLED: '1'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -45,8 +45,26 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Start MongoDB
-        run: docker compose up -d --wait mongo
+      # CI starts Mongo itself instead of using the dev Compose healthcheck. The
+      # member host `127.0.0.1:27017` works both inside the container and from the runner.
+      - name: Start MongoDB (single-node replica set)
+        run: |
+          docker run --detach --name mongo --publish 127.0.0.1:27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          for attempt in $(seq 1 30); do
+            if docker exec mongo mongosh --quiet --eval "
+              try { rs.status().ok } catch (error) {
+                rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })
+              }
+              db.hello().isWritablePrimary
+            " 2>/dev/null | grep -q true; then
+              echo "MongoDB replica set is ready (attempt $attempt)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::MongoDB did not become a writable primary within 60 s"
+          docker logs mongo
+          exit 1
 
       - name: Lint
         run: pnpm lint:inner
@@ -68,4 +86,4 @@ jobs:
 
       - name: Dump MongoDB logs
         if: failure()
-        run: docker compose logs mongo
+        run: docker logs mongo
