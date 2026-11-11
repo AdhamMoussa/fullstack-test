@@ -18,6 +18,8 @@ line-by-line authorship of the generated code, tests, Dockerfiles, or plan prose
   development setup.
 - Prisma schema/client plumbing, shared contract schemas, the Prisma
   `SessionStore`/`EmailTokenStore` implementation, and most tests.
+- The Nest auth/config/mail wiring, session provider, credentials service, and the
+  auth/users endpoints.
 - README, `AGENTS.md`, the auth plan, and the task/change-log prose.
 - Diagnosis of runtime issues such as hot-reload failures, orphaned Nest processes,
   and the missing `procps` package.
@@ -38,6 +40,11 @@ that did not match the architecture or product requirements.
 - Running the authentication package's own store contract against the real test
   database, including its concurrency cases, instead of relying on hand-written
   assumptions about the store's atomicity.
+- Following the package's current interfaces and Nest's built-in
+  `useSecurityHeaders()`/`enableCsrfProtection()` instead of older examples. The
+  reset flow's `markVerified` turned out to belong to the package's
+  `EmailVerificationHandler`, not `PasswordResetHandler`, so the API registers a
+  verification handler even though it exposes no verification screen.
 - Keeping `plans/auth/` with the plan, task checklist, and change log so the intent
   behind each change stays visible.
 
@@ -73,6 +80,12 @@ that did not match the architecture or product requirements.
 - **Planning process.** I introduced `plans/` with `plan.md` and `tasks.md`, then
   required an append-only `changes.md` per plan so the original plan and later
   developer-requested refinements stay visible.
+- **Skill usage.** I require the relevant skills to be loaded at the start of a task,
+  before implementation, rather than after the work is done.
+- **One class per file.** I required every class to live in its own file, with related
+  classes grouped in feature subfolders such as `src/auth/mailers/`.
+- **Expressive naming.** I require method and variable names to state intent instead
+  of generic placeholders such as `verify`, `found`, or `valid`.
 
 ## Product decisions
 

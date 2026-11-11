@@ -1,6 +1,6 @@
 # Auth Feature Plan
 
-**Status:** `@nestjs/authentication` adopted; Tasks #1 (dependencies, contract, schema) and #2 (Prisma auth store) complete — API implementation next
+**Status:** `@nestjs/authentication` adopted; Tasks #1–#3 (contract/schema, Prisma store, API foundation) complete — API e2e tests next
 **Last updated:** 2026-11-11
 **Source of truth:** [`Full_Stack_Test_Task.pdf`](../../Full_Stack_Test_Task.pdf) and [`AGENTS.md`](../../AGENTS.md)
 **Tasks:** [`tasks.md`](./tasks.md)
@@ -51,10 +51,18 @@ React forms.
   `StandardSchemaValidationPipe` registered, and `PrismaAuthStore` implementing
   `SessionStore`/`EmailTokenStore` in `apps/api/src/prisma/`. The package's
   `authenticationStoreContract()` suite passes against `assessment_test`, including
-  concurrency and cross-client persistence, but there are still no auth/users
-  modules or authentication code.
-- Task #1 (dependencies, contract, schema) and Task #2 (authentication store) are
-  complete; the API/frontend implementation is next.
+  concurrency and cross-client persistence.
+- The API foundation is implemented: validated environment config, a shared
+  `PrismaService`, session authentication, scrypt credentials, the auth controller
+  (`/auth/signup`, `/auth/signin`, `/auth/forgot-password`,
+  `/auth/reset-password`, `/auth/sign-out`), and the protected `GET /users/me`.
+  Security headers, credentialed CORS, and CSRF origin checks are enabled. The
+  auth routes and the scaffold `GET /` are `@Public()`.
+- Password reset uses the package's `PasswordResetHandler`; the app also registers an
+  `EmailVerificationHandler` so the package can mark the reset address verified.
+  No user-facing email-verification endpoint exists.
+- Task #1 (dependencies, contract, schema), Task #2 (authentication store), and
+  Task #3 (API foundation) are complete. API e2e tests and the frontend are next.
 - `apps/web` is a Vite React scaffold wired into Docker with `@repo/contract` as a
   dependency; TanStack Router/Query, Axios, Mantine, forms, and the auth UI are not
   set up yet.
@@ -150,38 +158,38 @@ the web app can go directly to `/app`. The reset URL points at
 New/changed files:
 
 - `apps/api/src/config/env.validation.ts` — Zod schema for `PORT`, `MONGODB_URI`,
-  `MONGODB_TEST_URI` where applicable, `WEB_ORIGIN`, `APP_URL`, and optional
-  `SMTP_URL`; fail startup on invalid values.
-- `apps/api/src/app.module.ts` — `ConfigModule`, `AuthenticationModule`,
-  `AuthModule`, `UsersModule`, `PrismaService`, mail, and the existing pipe.
-- `apps/api/src/prisma/prisma.service.ts` — injected client around
-  `getPrismaClient()`, with shutdown handling.
+  `WEB_ORIGIN`, `APP_URL`, optional `SMTP_URL`, `MAIL_FROM`, and the session
+  lifetimes; fail startup on invalid values.
+- `apps/api/src/app.module.ts` — `ConfigModule`, `AuthenticationModule.forRootAsync`,
+  `MailModule`, `AuthModule`, `UsersModule`, and the existing validation pipe.
+- `apps/api/src/prisma/prisma.module.ts`, `prisma.service.ts` — one injected client
+  around `getPrismaClient()`, with shutdown handling.
 - `apps/api/src/prisma/prisma-auth.store.ts` — implements `SessionStore` and
   `EmailTokenStore`; registers both contracts.
-- `apps/api/src/auth/auth.module.ts` — `AuthenticationModule.forRootAsync`,
-  credential/session providers, mail, and the password-reset handler.
-- `apps/api/src/auth/users.repository.ts` — Prisma create/find/credential/password/
+- `apps/api/src/auth/auth.module.ts` — store, session, credential, and mailer
+  providers.
+- `apps/api/src/users/users.repository.ts` — Prisma create/find/credential/password/
   verification methods; only public user objects leave it.
 - `apps/api/src/auth/session-auth.provider.ts` — `SessionCookieProvider` whose
   `validate()` loads the current user.
 - `apps/api/src/auth/credentials.service.ts` — `PasswordHasher` registration and
   timing-safe verification; 409 for duplicate email.
 - `apps/api/src/auth/auth.controller.ts` — `@Public()` signup, signin,
-  forgot-password, reset-password, and sign-out; `@Public()` scaffold route stays
-  public.
-- `apps/api/src/auth/password-reset.mailer.ts` — `PasswordResetHandler` (`findUser`,
-  `send`, `updatePassword`, `markVerified`).
-- `apps/api/src/users/users.module.ts`, `users.controller.ts`, `users.service.ts`,
-  `user.mapper.ts` — protected `GET /users/me` using `@CurrentUser()`.
+  forgot-password, reset-password, and sign-out.
+- `apps/api/src/auth/mailers/password-reset.mailer.ts` — `PasswordResetHandler`
+  (`findUser`, `send`, `updatePassword`).
+- `apps/api/src/auth/mailers/email-verification.mailer.ts` — `EmailVerificationHandler`
+  whose `markVerified()` updates `User.emailVerified` after a reset.
+- `apps/api/src/users/users.module.ts`, `users.controller.ts`, `user.mapper.ts` —
+  protected `GET /users/me` using `@CurrentUser()`.
 - `apps/api/src/mail/mail.module.ts` — `MailModule` with `LogMailTransport` in dev
-  and optional `SmtpTransport`.
-- `apps/api/src/common/http-exception.filter.ts` — normalize non-auth errors to
-  `ApiError`; package auth errors should keep their status/error shape.
+  and `SmtpTransport` when `SMTP_URL` is set.
 
 Behavior:
 
 1. Signup registers through `CredentialsService`, calls `SignInService.signIn()` to
-   set the session cookie, and returns the public user. No email verification.
+   set the session cookie, and returns the public user. Signup does not send an email
+   verification link; email verification is not a user-facing flow.
 2. Signin verifies the password through the timing-safe `PasswordHasher`, calls
    `SignInService.signIn()`, and returns the public user.
 3. Forgot-password calls `PasswordResetService.request(email)` and returns 202

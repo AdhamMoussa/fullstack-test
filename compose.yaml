@@ -113,9 +113,12 @@ services:
       PORT: "3000"
       MONGODB_URI: "mongodb://mongo:27017/assessment?replicaSet=rs0"
       MONGODB_TEST_URI: "mongodb://mongo:27017/assessment_test?replicaSet=rs0"
-      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      MAIL_FROM: "${MAIL_FROM:-Auth Assessment <no-reply@localhost>}"
+      SESSION_ABSOLUTE_TTL: ${SESSION_ABSOLUTE_TTL:-7d}
+      SESSION_IDLE_TTL: ${SESSION_IDLE_TTL:-1d}
+      SMTP_URL: ${SMTP_URL:-}
       pnpm_config_verify_deps_before_run: "false"
     ports:
       - "127.0.0.1:3000:3000"

@@ -6,6 +6,7 @@ import { getPrismaClient, PrismaClient } from '@repo/db'
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { PrismaAuthStore } from '../src/prisma/prisma-auth.store.js'
+import { PrismaService } from '../src/prisma/prisma.service.js'
 
 const prisma = getPrismaClient()
 const maxPending = 3
@@ -14,79 +15,95 @@ class CappedPrismaAuthStore extends PrismaAuthStore {
   protected override readonly maxPendingEmailTokens = maxPending
 }
 
-const cases = authenticationStoreContract(
+const contractCases = authenticationStoreContract(
   async () => {
     await prisma.authSession.deleteMany({})
     await prisma.authEmailToken.deleteMany({})
-    const store = new CappedPrismaAuthStore(prisma, new AuthenticationStorage())
-    return { sessions: store, emailTokens: store }
+    const authStore = new CappedPrismaAuthStore(
+      new PrismaService(prisma),
+      new AuthenticationStorage(),
+    )
+    return { sessions: authStore, emailTokens: authStore }
   },
   { contracts: ['sessions', 'emailTokens'], concurrent: true, maxPending },
 )
 
 describe('PrismaAuthStore', () => {
   it('registers both contracts with AuthenticationStorage', () => {
-    const storage = new AuthenticationStorage()
-    const store = new CappedPrismaAuthStore(prisma, storage)
+    const authenticationStorage = new AuthenticationStorage()
+    const authStore = new CappedPrismaAuthStore(
+      new PrismaService(prisma),
+      authenticationStorage,
+    )
 
-    expect(storage.sessions).toBe(store)
-    expect(storage.emailTokens).toBe(store)
+    expect(authenticationStorage.sessions).toBe(authStore)
+    expect(authenticationStorage.emailTokens).toBe(authStore)
   })
 
-  for (const testCase of cases) {
-    it(testCase.name, () => testCase.run())
+  for (const contractCase of contractCases) {
+    it(contractCase.name, () => contractCase.run())
   }
 
   it('keeps sessions and email tokens in MongoDB across store instances', async () => {
     const userId = `user-${randomUUID()}`
-    const now = new Date()
-    const session = {
+    const createdAt = new Date()
+    const sessionRecord = {
       id: randomUUID().replaceAll('-', ''),
       userId,
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + 60_000),
-      lastActiveAt: now,
+      createdAt,
+      expiresAt: new Date(createdAt.getTime() + 60_000),
+      lastActiveAt: createdAt,
     }
-    const token = {
+    const emailTokenRecord = {
       id: randomUUID().replaceAll('-', ''),
       purpose: 'password-reset' as const,
       userId,
       email: 'persisted@example.com',
       fingerprint: 'password-hash-fingerprint',
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + 60_000),
+      createdAt,
+      expiresAt: new Date(createdAt.getTime() + 60_000),
     }
 
-    const firstClient = new PrismaClient()
+    const firstPrismaClient = new PrismaClient()
     try {
       const firstStore = new CappedPrismaAuthStore(
-        firstClient,
+        new PrismaService(firstPrismaClient),
         new AuthenticationStorage(),
       )
-      await firstStore.createSession(session)
-      await firstStore.saveEmailToken(token)
+      await firstStore.createSession(sessionRecord)
+      await firstStore.saveEmailToken(emailTokenRecord)
     } finally {
-      await firstClient.$disconnect()
+      await firstPrismaClient.$disconnect()
     }
 
-    const secondClient = new PrismaClient()
+    const secondPrismaClient = new PrismaClient()
     try {
       const secondStore = new CappedPrismaAuthStore(
-        secondClient,
+        new PrismaService(secondPrismaClient),
         new AuthenticationStorage(),
       )
-      expect(await secondStore.getSession(session.id)).toEqual(session)
-      expect(await secondStore.listUserSessions(userId)).toEqual([session])
+      expect(await secondStore.getSession(sessionRecord.id)).toEqual(
+        sessionRecord,
+      )
+      expect(await secondStore.listUserSessions(userId)).toEqual([
+        sessionRecord,
+      ])
       expect(
-        await secondStore.consumeEmailToken(token.id, token.purpose),
-      ).toEqual(token)
+        await secondStore.consumeEmailToken(
+          emailTokenRecord.id,
+          emailTokenRecord.purpose,
+        ),
+      ).toEqual(emailTokenRecord)
       expect(
-        await secondStore.consumeEmailToken(token.id, token.purpose),
+        await secondStore.consumeEmailToken(
+          emailTokenRecord.id,
+          emailTokenRecord.purpose,
+        ),
       ).toBeUndefined()
     } finally {
-      await secondClient.authSession.deleteMany({ where: { userId } })
-      await secondClient.authEmailToken.deleteMany({ where: { userId } })
-      await secondClient.$disconnect()
+      await secondPrismaClient.authSession.deleteMany({ where: { userId } })
+      await secondPrismaClient.authEmailToken.deleteMany({ where: { userId } })
+      await secondPrismaClient.$disconnect()
     }
   })
 })

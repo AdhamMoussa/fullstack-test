@@ -7,82 +7,87 @@ import {
   type SessionRecord,
   type SessionStore,
 } from '@nestjs/authentication'
-import {
-  Prisma,
-  type AuthEmailToken,
-  type AuthSession,
-  type PrismaClient,
-} from '@repo/db'
+import { Prisma, type AuthEmailToken, type AuthSession } from '@repo/db'
+
+import { PrismaService } from './prisma.service.js'
 
 @Injectable()
 export class PrismaAuthStore implements SessionStore, EmailTokenStore {
   protected readonly maxPendingEmailTokens: number = 100
 
   constructor(
-    private readonly prisma: PrismaClient,
+    private readonly prismaService: PrismaService,
     storage: AuthenticationStorage,
   ) {
     storage.registerSource({ sessions: this, emailTokens: this })
   }
 
   async getSession(id: string): Promise<SessionRecord | undefined> {
-    const row = await this.prisma.authSession.findUnique({ where: { id } })
-    return row ? this.toSession(row) : undefined
+    const sessionRow = await this.prismaService.client.authSession.findUnique({
+      where: { id },
+    })
+
+    return sessionRow ? this.toSession(sessionRow) : undefined
   }
 
-  async createSession(record: SessionRecord): Promise<void> {
+  async createSession(newSession: SessionRecord): Promise<void> {
     // Prune only absolute expiry; idle sessions are handled by SessionService.
-    await this.prisma.authSession.deleteMany({
-      where: { expiresAt: { lte: record.createdAt } },
+    await this.prismaService.client.authSession.deleteMany({
+      where: { expiresAt: { lte: newSession.createdAt } },
     })
-    await this.prisma.authSession.create({
+    await this.prismaService.client.authSession.create({
       data: {
-        id: record.id,
-        userId: record.userId,
-        createdAt: record.createdAt,
-        expiresAt: record.expiresAt,
-        lastActiveAt: record.lastActiveAt,
-        mfa: record.mfa,
-        metadata: record.metadata as Prisma.InputJsonValue | undefined,
+        id: newSession.id,
+        userId: newSession.userId,
+        createdAt: newSession.createdAt,
+        expiresAt: newSession.expiresAt,
+        lastActiveAt: newSession.lastActiveAt,
+        mfa: newSession.mfa,
+        metadata: newSession.metadata as Prisma.InputJsonValue | undefined,
       },
     })
   }
 
   async touchSession(id: string, lastActiveAt: Date): Promise<void> {
-    await this.prisma.authSession.updateMany({
+    await this.prismaService.client.authSession.updateMany({
       where: { id, lastActiveAt: { lt: lastActiveAt } },
       data: { lastActiveAt },
     })
   }
 
   async deleteSession(id: string): Promise<boolean> {
-    const { count } = await this.prisma.authSession.deleteMany({ where: { id } })
-    return count > 0
+    const { count: deletedSessionCount } =
+      await this.prismaService.client.authSession.deleteMany({ where: { id } })
+
+    return deletedSessionCount > 0
   }
 
   async listUserSessions(userId: string): Promise<SessionRecord[]> {
-    const rows = await this.prisma.authSession.findMany({ where: { userId } })
-    return rows.map((row) => this.toSession(row))
+    const sessionRows = await this.prismaService.client.authSession.findMany({
+      where: { userId },
+    })
+
+    return sessionRows.map((sessionRow) => this.toSession(sessionRow))
   }
 
   async deleteUserSessions(userId: string): Promise<void> {
-    await this.prisma.authSession.deleteMany({ where: { userId } })
+    await this.prismaService.client.authSession.deleteMany({ where: { userId } })
   }
 
-  async saveEmailToken(record: EmailTokenRecord): Promise<void> {
-    await this.prisma.authEmailToken.create({
+  async saveEmailToken(emailToken: EmailTokenRecord): Promise<void> {
+    await this.prismaService.client.authEmailToken.create({
       data: {
-        id: record.id,
-        purpose: record.purpose,
-        userId: record.userId,
-        email: record.email,
-        fingerprint: record.fingerprint,
-        createdAt: record.createdAt,
-        expiresAt: record.expiresAt,
+        id: emailToken.id,
+        purpose: emailToken.purpose,
+        userId: emailToken.userId,
+        email: emailToken.email,
+        fingerprint: emailToken.fingerprint,
+        createdAt: emailToken.createdAt,
+        expiresAt: emailToken.expiresAt,
       },
     })
-    await this.prisma.authEmailToken.deleteMany({
-      where: { expiresAt: { lte: record.createdAt } },
+    await this.prismaService.client.authEmailToken.deleteMany({
+      where: { expiresAt: { lte: emailToken.createdAt } },
     })
     await this.pruneEmailTokens()
   }
@@ -94,10 +99,12 @@ export class PrismaAuthStore implements SessionStore, EmailTokenStore {
     try {
       // One conditional find-and-delete: it returns the token and only one of
       // several concurrent consumes can match the id/purpose pair.
-      const row = await this.prisma.authEmailToken.delete({
-        where: { id, purpose },
-      })
-      return this.toEmailToken(row)
+      const emailTokenRow =
+        await this.prismaService.client.authEmailToken.delete({
+          where: { id, purpose },
+        })
+
+      return this.toEmailToken(emailTokenRow)
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -113,49 +120,58 @@ export class PrismaAuthStore implements SessionStore, EmailTokenStore {
     userId: string,
     purpose: EmailTokenPurpose,
   ): Promise<void> {
-    await this.prisma.authEmailToken.deleteMany({ where: { userId, purpose } })
+    await this.prismaService.client.authEmailToken.deleteMany({
+      where: { userId, purpose },
+    })
   }
 
-  private toSession(row: AuthSession): SessionRecord {
+  private toSession(sessionRow: AuthSession): SessionRecord {
     return {
-      id: row.id,
-      userId: row.userId,
-      createdAt: row.createdAt,
-      expiresAt: row.expiresAt,
-      lastActiveAt: row.lastActiveAt,
-      ...(row.mfa === null ? {} : { mfa: row.mfa as SessionRecord['mfa'] }),
-      ...(row.metadata === null
+      id: sessionRow.id,
+      userId: sessionRow.userId,
+      createdAt: sessionRow.createdAt,
+      expiresAt: sessionRow.expiresAt,
+      lastActiveAt: sessionRow.lastActiveAt,
+      ...(sessionRow.mfa === null
         ? {}
-        : { metadata: row.metadata as Record<string, unknown> }),
+        : { mfa: sessionRow.mfa as SessionRecord['mfa'] }),
+      ...(sessionRow.metadata === null
+        ? {}
+        : { metadata: sessionRow.metadata as Record<string, unknown> }),
     }
   }
 
-  private toEmailToken(row: AuthEmailToken): EmailTokenRecord {
+  private toEmailToken(emailTokenRow: AuthEmailToken): EmailTokenRecord {
     return {
-      id: row.id,
-      purpose: row.purpose as EmailTokenPurpose,
-      userId: row.userId,
-      email: row.email,
-      ...(row.fingerprint === null ? {} : { fingerprint: row.fingerprint }),
-      createdAt: row.createdAt,
-      expiresAt: row.expiresAt,
+      id: emailTokenRow.id,
+      purpose: emailTokenRow.purpose as EmailTokenPurpose,
+      userId: emailTokenRow.userId,
+      email: emailTokenRow.email,
+      ...(emailTokenRow.fingerprint === null
+        ? {}
+        : { fingerprint: emailTokenRow.fingerprint }),
+      createdAt: emailTokenRow.createdAt,
+      expiresAt: emailTokenRow.expiresAt,
     }
   }
 
   private async pruneEmailTokens(): Promise<void> {
-    const count = await this.prisma.authEmailToken.count()
-    const excess = count - this.maxPendingEmailTokens
-    if (excess <= 0) return
+    const storedTokenCount =
+      await this.prismaService.client.authEmailToken.count()
+    const tokensOverLimit = storedTokenCount - this.maxPendingEmailTokens
 
-    const oldest = await this.prisma.authEmailToken.findMany({
+    if (tokensOverLimit <= 0) return
+
+    const oldestTokens = await this.prismaService.client.authEmailToken.findMany({
       orderBy: { expiresAt: 'asc' },
-      take: excess,
+      take: tokensOverLimit,
       select: { id: true },
     })
-    if (oldest.length === 0) return
 
-    await this.prisma.authEmailToken.deleteMany({
-      where: { id: { in: oldest.map(({ id }) => id) } },
+    if (oldestTokens.length === 0) return
+
+    await this.prismaService.client.authEmailToken.deleteMany({
+      where: { id: { in: oldestTokens.map(({ id }) => id) } },
     })
   }
 }

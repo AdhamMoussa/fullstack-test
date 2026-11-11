@@ -52,36 +52,40 @@ current.
 
 ## 3. API foundation
 
-- [ ] Add `apps/api/src/config/env.validation.ts` for `PORT`, `MONGODB_URI`,
+- [x] Add `apps/api/src/config/env.validation.ts` for `PORT`, `MONGODB_URI`,
       `WEB_ORIGIN`, `APP_URL`, optional `SMTP_URL`, and session lifetimes.
-- [ ] Register `ConfigModule.forRoot({ isGlobal: true, validate })`.
-- [ ] Add `apps/api/src/prisma/prisma.service.ts` around `getPrismaClient()` with
+- [x] Register `ConfigModule.forRoot({ isGlobal: true, validate })`.
+- [x] Add `apps/api/src/prisma/prisma.service.ts` around `getPrismaClient()` with
       shutdown handling.
-- [ ] Add `AuthenticationModule.forRootAsync` with session `absoluteTtl`/`idleTtl`,
+- [x] Add `AuthenticationModule.forRootAsync` with session `absoluteTtl`/`idleTtl`,
       `trustedOrigins: [WEB_ORIGIN]`, and the password-reset page URL.
-- [ ] Add `UsersRepository` over Prisma: create, find by email/id, credentials,
+- [x] Add `UsersRepository` over Prisma: create, find by email/id, credentials,
       update password, mark email verified; never return the hash to routes.
-- [ ] Add `CredentialsService` using the package's `PasswordHasher` (scrypt):
+- [x] Add `CredentialsService` using the package's `PasswordHasher` (scrypt):
       duplicate email → 409, timing-safe verify, generic 401.
-- [ ] Add `SessionAuth` (`SessionCookieProvider`) whose `validate()` loads the user;
+- [x] Add `SessionAuth` (`SessionCookieProvider`) whose `validate()` loads the user;
       register it with the authentication registry.
-- [ ] Add `PasswordResetHandler`/mailer using `@nestjs/mail`: `findUser`, `send`,
-      `updatePassword`, and `markVerified` (set `User.emailVerified`). Use
-      `LogMailTransport` in dev and leave `SmtpTransport` optional. No raw reset
-      tokens in responses.
-- [ ] Add `AuthController` with `@Public()` signup, signin, forgot-password,
-      reset-password, and sign-out. Signup/signin/reset use `SignInService` and return
-      the public user.
-- [ ] Sign-out uses the package's session handling, clears the cookie, and returns
+- [x] Add the password-reset mailer using `@nestjs/mail`: `findUser`, `send`,
+      `updatePassword`, and an email-verification handler's `markVerified` (sets
+      `User.emailVerified`). Use `LogMailTransport` in dev and `SmtpTransport` when
+      `SMTP_URL` is set. No raw reset tokens in responses.
+- [x] Add `AuthController` with `@Public()` signup, signin, forgot-password,
+      reset-password, and sign-out. Signup/signin call `SignInService`; reset uses
+      `PasswordResetService` with `signIn: true`. All return the public user where
+      applicable.
+- [x] Sign-out uses the package's session handling, clears the cookie, and returns
       204.
-- [ ] Add `UsersModule` + `UsersController` with protected `GET /users/me` using
+- [x] Add `UsersModule` + `UsersController` with protected `GET /users/me` using
       `@CurrentUser()`; do not add `/auth/me`.
-- [ ] Mark the scaffold `GET /` and the auth routes `@Public()`; keep the package's
+- [x] Mark the scaffold `GET /` and the auth routes `@Public()`; keep the package's
       global guard on by default.
-- [ ] Enable Helmet, credentialed CORS for `WEB_ORIGIN`, and
-      `app.enableCsrfProtection()` on Nest 12.1+ with the same trusted origins.
+- [x] Enable security headers (`app.useSecurityHeaders()`), credentialed CORS for
+      `WEB_ORIGIN`, and `app.enableCsrfProtection()` on Nest 12.1+ with the same
+      trusted origins. Nest's built-in headers match Helmet 8, so no Helmet
+      dependency is needed.
 - [ ] Optional: add `@nestjs/throttler` definitions for signin/forgot by IP + account.
-- [ ] Keep `PasswordHasher` (scrypt); no argon2/native build dependency.
+      Deferred; not required for the assessment scope.
+- [x] Keep `PasswordHasher` (scrypt); no argon2/native build dependency.
 
 ## 4. API tests
 

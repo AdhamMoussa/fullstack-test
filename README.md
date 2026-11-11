@@ -2,7 +2,7 @@
 
 Sign-up / sign-in module: NestJS + MongoDB API and a React frontend, in a pnpm + Turbo monorepo. Requirements are in [`Full_Stack_Test_Task.pdf`](./Full_Stack_Test_Task.pdf).
 
-> **Status:** work in progress. The workspace, Docker dev stack, database package, shared contract, Vite React scaffold, and the Prisma session/email-token store are in place. The auth endpoints and auth screens are not built yet.
+> **Status:** work in progress. The workspace, Docker dev stack, database package, shared contract, auth API (session cookies, signup/signin, password reset, users), and the Prisma session/email-token store are in place. The React auth screens are not built yet.
 
 ## Layout
 
@@ -107,26 +107,35 @@ Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` 
 | `MONGODB_URI` | api, db | `mongodb://mongo:27017/assessment?replicaSet=rs0` |
 | `MONGODB_TEST_URI` | api, db (tests) | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
 | `PORT` | api | `3000` |
-| `JWT_SECRET` | api | `dev-only-change-me` (override from your shell) |
-| `JWT_EXPIRES_IN` | api | `1h` |
-| `WEB_ORIGIN` | api (CORS/trusted origin) | `http://localhost:5173` |
+| `WEB_ORIGIN` | api (CORS/CSRF trusted origin) | `http://localhost:5173` |
+| `APP_URL` | api (reset links) | `http://localhost:5173` |
+| `MAIL_FROM` | api (mail sender) | `Auth Assessment <no-reply@localhost>` |
+| `SESSION_ABSOLUTE_TTL` | api | `7d` |
+| `SESSION_IDLE_TTL` | api | `1d` |
+| `SMTP_URL` | api (optional) | unset; logs mail in development |
 | `VITE_API_URL` | web | `http://localhost:3000` |
 
-The auth plan switches from bearer JWT to `@nestjs/authentication` httpOnly session
-cookies. It removes `JWT_SECRET`/`JWT_EXPIRES_IN`, adds `APP_URL` for reset links and
-optional `SMTP_URL`, and updates the Compose env when implemented.
+Auth uses `@nestjs/authentication` server-side sessions in an httpOnly `__Host-sid`
+cookie. There are no JWT or localStorage secrets. The API sets Helmet-equivalent
+security headers, allows credentialed CORS from `WEB_ORIGIN`, and enables CSRF origin
+checks.
 
 ## API
 
 | Method | Path | Auth | Status |
 | --- | --- | --- | --- |
 | `GET` | `/` | none | Scaffold endpoint, returns `Hello World!` |
-| `POST` | `/auth/signup` | none | Planned: 201 user + httpOnly session cookie; 400 for invalid input, 409 for duplicate email |
-| `POST` | `/auth/signin` | none | Planned: 200 user + session cookie; 401 for bad credentials |
-| `POST` | `/auth/forgot-password` | none | Planned: 202 generic response for known and unknown emails; 400 for invalid input |
-| `POST` | `/auth/reset-password` | none | Planned: 200 user + session cookie (signed in); 400 for invalid, expired, or used token |
-| `POST` | `/auth/sign-out` | session cookie | Planned: 204 and clear the cookie |
-| `GET` | `/users/me` | session cookie | Planned: 200 with user; 401 without a valid session |
+| `POST` | `/auth/signup` | none | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
+| `POST` | `/auth/signin` | none | 200 `{ user }` + session cookie; 401 bad credentials |
+| `POST` | `/auth/forgot-password` | none | 202 generic empty response for known and unknown emails; 400 invalid input |
+| `POST` | `/auth/reset-password` | none | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
+| `POST` | `/auth/sign-out` | none | 204 and clears the cookie |
+| `GET` | `/users/me` | session cookie | 200 with the public user; 401 without a valid session |
+
+`PublicUser` includes `id`, `email`, `name`, `emailVerified`, and ISO `createdAt`/
+`updatedAt` timestamps. Passwords, hashes, session tokens, and reset tokens never
+appear in responses. The reset URL is logged in development; set `SMTP_URL` to send
+real mail.
 
 ## Troubleshooting
 
