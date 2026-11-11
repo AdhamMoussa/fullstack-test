@@ -71,15 +71,16 @@ describe('OpenAPI (e2e)', () => {
 
     expect(Object.keys(document.paths).sort()).toEqual(
       [
-        '/',
         '/auth/forgot-password',
         '/auth/reset-password',
         '/auth/signin',
         '/auth/sign-out',
         '/auth/signup',
+        '/health',
         '/users/me',
       ].sort(),
     )
+    expect(document.paths).not.toHaveProperty('/')
     expect(document.paths).not.toHaveProperty('/auth/me')
   })
 

@@ -76,7 +76,7 @@ current.
 - [x] Sign-out uses the package's session handling, clears the cookie, and returns 204.
 - [x] Add `UsersModule` + `UsersController` with protected `GET /users/me` using
       `@CurrentUser()`; do not add `/auth/me`.
-- [x] Mark the scaffold `GET /` and the auth routes `@Public()`; keep the package's
+- [x] Mark `GET /health` and the auth routes `@Public()`; keep the package's
       global guard on by default.
 - [x] Enable security headers (`app.useSecurityHeaders()`), credentialed CORS for
       `WEB_ORIGIN`, and `app.enableCsrfProtection()` on Nest 12.1+ with the same

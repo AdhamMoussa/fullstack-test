@@ -97,6 +97,7 @@ function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             autoComplete="new-password"
             description={passwordRulesDescription}
             withAsterisk
+            aria-invalid={Boolean(errors.password)}
             error={errors.password?.message}
             visibilityToggleButtonProps={visibilityToggleButtonProps}
             {...register('password')}
@@ -105,6 +106,7 @@ function ResetPasswordForm({ token }: ResetPasswordFormProps) {
             label="Confirm new password"
             autoComplete="new-password"
             withAsterisk
+            aria-invalid={Boolean(errors.confirmPassword)}
             error={errors.confirmPassword?.message}
             visibilityToggleButtonProps={visibilityToggleButtonProps}
             {...register('confirmPassword')}

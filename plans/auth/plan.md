@@ -42,7 +42,7 @@ React forms.
 - `packages/contract` exports signup/signin/forgot/reset input schemas,
   `userSchema`/`User` (with `emailVerified`), token-free
   `authResponseSchema`/`AuthResponse`, and `apiErrorSchema`/`ApiError`. Contract
-  tests pass (19).
+  tests pass (25).
 - `packages/db` has `User` (`emailVerified` included), `AuthSession`, and
   `AuthEmailToken`; the schema has been generated and pushed to the dev and test
   databases. Store user ids are plain strings, so the package contract's opaque
@@ -57,14 +57,14 @@ React forms.
   (`/auth/signup`, `/auth/signin`, `/auth/forgot-password`,
   `/auth/reset-password`, `/auth/sign-out`), and the protected `GET /users/me`.
   Security headers, credentialed CORS, and CSRF origin checks are enabled. The
-  auth routes and the scaffold `GET /` are `@Public()`.
+  auth routes and `GET /health` are `@Public()`.
 - Password reset uses the package's `PasswordResetHandler`; the app also registers an
   `EmailVerificationHandler` so the package can mark the reset address verified.
   No user-facing email-verification endpoint exists.
 - Task #1 (dependencies, contract, schema), Task #2 (authentication store),
   Task #3 (API foundation), and Task #4 (API e2e tests) are complete. The e2e suite
-  covers auth, users, password reset, CSRF, routing, and the OpenAPI document, and
-  also runs the store contract: 36 tests passing.
+  covers auth, users, password reset, CSRF, routing, health, and the OpenAPI
+  document, and also runs the store contract: 37 tests passing.
 - API docs are served at `/docs` (Swagger UI) and `/docs/json` unless
   `NODE_ENV=production`. They are set up in `apps/api/src/openapi/setup-openapi.ts`;
   request bodies come from `@Body({ schema })` and responses from `standardSchema`
@@ -85,16 +85,24 @@ React forms.
   the package's `AuthenticationEvents` for sign-in/sign-out/reset/verification audit
   lines. Bodies, cookies, tokens, query strings, and emails are never logged.
 - Verification (2026-11-11, Docker stack): `pnpm lint`, `pnpm typecheck`,
-  `pnpm test`, and `pnpm build` pass; `pnpm test` runs 19 contract tests and 1 API
-  unit test, and the only build warning is Vite's >500 kB chunk advisory. The API
-  e2e command passes 36 tests in 4 files (auth 16, OpenAPI 5, store contract 14,
-  app 1). The
+  `pnpm test`, and `pnpm build` pass; `pnpm test` runs 25 contract tests, 23 API
+  unit tests, and 14 web tests (62 total), and the web build splits into 15 chunks
+  with a 434 kB main chunk (no >500 kB advisory). The API
+  e2e command passes 37 tests in 4 files (auth 16, OpenAPI 5, store contract 14,
+  health 2). The
   manual Chrome flow covered the signed-out `/app` redirect, signup validation and
   trimming, reload, sign-out/sign-in with the generic credentials error, the
   generic forgot-password state, the logged reset link (signs in and lands on
   `/app`), reused and missing tokens, and the old/new password swap. The cookie
   flags, empty browser storage, token-free response body, security headers, CSRF
   403, and 204 sign-out without a session were all confirmed.
+- Submission-review polish (2026-11-11): `GET /health` replaced the scaffold
+  `GET /`/`AppService` and pings MongoDB (200 `{ "status": "ok" }`, 503 on failure);
+  the contract now bounds email (≤ 254), name (≤ 100), and password (≤ 128); the
+  router renders `ErrorScreen` through `defaultErrorComponent`; password fields set
+  `aria-invalid`; TanStack Router `autoCodeSplitting` splits the web build into 15
+  chunks with a 434 kB main chunk; and `apps/web` has its first tests (Vitest +
+  Testing Library + jsdom, 14 tests in 4 files).
 - Docker Compose runs `mongo`, `db`, `contract`, `api`, and `web`; all ports are
   loopback-only. `db` pushes the schema to both the dev and test databases.
 - Root scripts run through the `api`/`db` containers; Oxlint is the linter and
@@ -116,8 +124,8 @@ React forms.
    with an explicit credentialed origin, and the package's `session.trustedOrigins`
    includes `WEB_ORIGIN`. No reverse proxy is needed locally.
 4. **Global guard, explicit public routes.** `AuthenticationModule` protects every
-   route by default. Mark signup, signin, forgot-password, reset-password, and the
-   scaffold `GET /` with `@Public()`.
+   route by default. Mark signup, signin, forgot-password, reset-password, and
+   `GET /health` with `@Public()`.
 5. **Prisma/MongoDB authentication store.** Implement `SessionStore` and
    `EmailTokenStore` from the package against Prisma. The MongoDB replica set
    supports the required transactions. Run the package's
@@ -348,7 +356,7 @@ consistent with Mantine defaults.
 - `@nestjs/authentication` is new and its store examples are PostgreSQL-oriented.
   The Mongo/Prisma store must pass the package's contract suite, including the
   atomic-consume cases; Mongo transactions require the existing replica set.
-- The package's global guard protects everything by default; the scaffold `GET /`
+- The package's global guard protects everything by default; `GET /health`
   and auth routes need `@Public()` or tests will fail with 401.
 - Cookie sessions need credentialed CORS, `session.trustedOrigins`, and the CSRF
   origin checks. Keep the web/API same-site; avoid `SameSite=None`.

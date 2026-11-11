@@ -85,6 +85,7 @@ export function SignupPage() {
             autoComplete="new-password"
             description={passwordRulesDescription}
             withAsterisk
+            aria-invalid={Boolean(errors.password)}
             error={errors.password?.message}
             visibilityToggleButtonProps={visibilityToggleButtonProps}
             {...register('password')}
@@ -94,6 +95,7 @@ export function SignupPage() {
             label="Confirm password"
             autoComplete="new-password"
             withAsterisk
+            aria-invalid={Boolean(errors.confirmPassword)}
             error={errors.confirmPassword?.message}
             visibilityToggleButtonProps={visibilityToggleButtonProps}
             {...register('confirmPassword')}

@@ -20,10 +20,20 @@ AI usage, corrections, and my human decisions are recorded in [`AI.md`](./AI.md)
 
 ## Prerequisites
 
-- **Docker Desktop**. Everything runs in containers.
-- **Node 26 and pnpm 11** on the host. You need them to install dependencies (this updates `pnpm-lock.yaml`), to give your editor types and Oxlint, and to run the root scripts. The apps don't run on the host.
+- **Docker Desktop** is required. The whole stack runs in containers.
+- **Node 26 and pnpm 11** are only needed for host scripts: installing dependencies (this updates `pnpm-lock.yaml`), editor types and Oxlint, and the root commands. They are not needed to run the app.
 
 ## Quick start
+
+### Docker only
+
+With Docker running, this starts the whole stack without Node or pnpm on the host:
+
+```bash
+docker compose up --build
+```
+
+The `pnpm` commands below are for host tooling (lockfile updates, editor types, Oxlint) and are all shortcuts around that same Compose stack.
 
 ```bash
 pnpm install   # host: lockfile, editor types, Oxlint
@@ -33,6 +43,86 @@ pnpm dev       # builds images and starts mongo, db, contract, api, and web in t
 The API is at http://localhost:3000 and the web app at http://localhost:5173. Stop the stack with `Ctrl+C`, or run `pnpm dev:down`.
 
 No `.env` file is needed: `compose.yaml` provides development defaults.
+
+## Web app
+
+| Route                     | Access     | Behavior                                                      |
+| ------------------------- | ---------- | ------------------------------------------------------------- |
+| `/signup`                 | signed out | email, name, password, confirm                                |
+| `/signin`                 | signed out | email, password; link to forgot password; honors `?redirect=` |
+| `/forgot-password`        | signed out | always shows the same "check your email" message              |
+| `/reset-password?token=…` | signed out | new password + confirmation; signs in                         |
+| `/app`                    | signed in  | `Welcome to the application.`, name/email, log out            |
+
+`/` and unknown paths redirect to `/app`.
+
+Signed-out users who visit `/app` go to `/signin?redirect=/app`; signed-in users who
+visit an auth page go to `/app`.
+
+- Guards run in TanStack Router `beforeLoad` against the `/users/me` query.
+- After any session change the app clears the query cache and re-runs the guards.
+- The browser never sees the session token: no localStorage/sessionStorage, and the
+  cookie is HttpOnly.
+
+## API
+
+| Method | Path                    | Auth                      | Status                                                                           |
+| ------ | ----------------------- | ------------------------- | -------------------------------------------------------------------------------- |
+| `GET`  | `/health`               | none                      | 200 `{ "status": "ok" }`; 503 when MongoDB does not answer a ping                |
+| `POST` | `/auth/signup`          | none                      | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
+| `POST` | `/auth/signin`          | none                      | 200 `{ user }` + session cookie; 401 bad credentials                             |
+| `POST` | `/auth/forgot-password` | none                      | 202 generic empty response for known and unknown emails; 400 invalid input       |
+| `POST` | `/auth/reset-password`  | none                      | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
+| `POST` | `/auth/sign-out`        | session cookie (optional) | 204; ends the current session and clears the cookie (204 even without a session) |
+| `GET`  | `/users/me`             | session cookie            | 200 with the public user; 401 without a valid session                            |
+
+Errors use the contract's `ApiError`: `{ statusCode, message, error }`, where `message` is a string or, for validation errors, an array like `["email: Invalid email address"]`. Status codes: 400 validation, 401 bad credentials/no session, 403 untrusted origin, 409 duplicate email.
+
+The contract `User` includes `id`, `email`, `name`, `emailVerified`, and ISO
+`createdAt`/`updatedAt` timestamps. Passwords, hashes, session tokens, and reset
+tokens never appear in responses. The reset URL is logged in development; set `SMTP_URL` to send
+real mail.
+
+## API docs
+
+Swagger UI is at http://localhost:3000/docs and the OpenAPI JSON at
+http://localhost:3000/docs/json. The docs are served when `NODE_ENV` is not
+`production`.
+
+Request bodies and responses are generated from the `@repo/contract` Zod schemas (with
+`@Body({ schema })` and `standardSchema` response decorators); there are no DTO
+classes. To try a protected route, call `POST /auth/signin` (or `/auth/signup`) in the
+UI first: the browser stores the httpOnly session cookie (`sid` in Docker dev,
+`__Host-sid` over HTTPS), and "Try it out" on
+`GET /users/me` then works.
+
+## Sessions and password reset
+
+Auth uses `@nestjs/authentication` server-side sessions in an httpOnly cookie.
+There are no JWT or localStorage secrets. Signup returns 409 when an email is already registered. That tells the visitor an account exists, unlike forgot-password; it is the usual signup trade-off, kept deliberately so the form can send them to sign in.
+
+- The session is a server-side record in MongoDB (`auth_sessions`). The browser gets
+  only the session cookie. Production uses `__Host-sid` (HttpOnly, Secure,
+  SameSite=Lax, Path=/). Local Docker dev sets `SESSION_COOKIE_SECURE=false`, so the
+  cookie is `sid` without Secure, because Safari rejects Secure cookies over
+  `http://localhost` (Chrome and Firefox accept them). Never disable it in
+  production. Lifetimes come from `SESSION_ABSOLUTE_TTL` (default 7d) and
+  `SESSION_IDLE_TTL` (default 1d).
+- CSRF origin checks reject state-changing requests from untrusted origins (403);
+  CORS allows credentials only from `WEB_ORIGIN`; security headers (CSP, HSTS,
+  X-Frame-Options) are enabled.
+- Reset tokens are stored only as SHA-256 hashes (`auth_email_tokens`).
+
+Reset flow:
+
+1. Submit an email on `/forgot-password`. The API returns 202 whether or not the
+   account exists.
+2. In dev, the reset link is logged: `docker compose logs api | grep reset-password`
+   (set `SMTP_URL` to send real mail).
+3. Open the link and choose a new password.
+4. The API marks the token used, updates the password, marks the email verified,
+   signs the user in, and the app goes to `/app`.
+5. Reused, expired, or invalid links return 400 and the page offers a new link.
 
 ## Services
 
@@ -92,82 +182,15 @@ Run from the repo root. Everything except `dev`, `dev:down` and `infra:*` runs i
 
 Nest validates request bodies with these schemas through `StandardSchemaValidationPipe`; the web forms use the same schemas with `zodResolver`. Do not duplicate these rules in app code.
 
-## Web app
-
-| Route                     | Access     | Behavior                                                      |
-| ------------------------- | ---------- | ------------------------------------------------------------- |
-| `/signup`                 | signed out | email, name, password, confirm                                |
-| `/signin`                 | signed out | email, password; link to forgot password; honors `?redirect=` |
-| `/forgot-password`        | signed out | always shows the same "check your email" message              |
-| `/reset-password?token=…` | signed out | new password + confirmation; signs in                         |
-| `/app`                    | signed in  | `Welcome to the application.`, name/email, log out            |
-
-`/` and unknown paths redirect to `/app`.
-
-Signed-out users who visit `/app` go to `/signin?redirect=/app`; signed-in users who
-visit an auth page go to `/app`.
-
-- Guards run in TanStack Router `beforeLoad` against the `/users/me` query.
-- After any session change the app clears the query cache and re-runs the guards.
-- The browser never sees the session token: no localStorage/sessionStorage, and the
-  cookie is HttpOnly.
-
 ## Tests
 
 ```bash
-pnpm test                                                        # unit tests (API + contract)
+pnpm test                                                        # unit tests (API + contract + web)
 docker compose exec api pnpm --filter @repo/api test:e2e         # e2e tests
-docker compose exec api pnpm --filter @repo/api exec vitest run src/app.controller.spec.ts
+docker compose exec api pnpm --filter @repo/api exec vitest run src/health/health.controller.spec.ts
 ```
 
-Tests run against a separate `assessment_test` database. Both Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 19 contract tests and 22 API unit tests; the e2e command runs 36 tests across the auth, OpenAPI, store contract, and app suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request.
-
-## Environment variables
-
-Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` and `packages/db` show the values to use if you run something on the host instead.
-
-| Variable                | Used by                        | Docker dev value                                       |
-| ----------------------- | ------------------------------ | ------------------------------------------------------ |
-| `MONGODB_URI`           | api, db                        | `mongodb://mongo:27017/assessment?replicaSet=rs0`      |
-| `MONGODB_TEST_URI`      | api, db (tests)                | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
-| `NODE_ENV`              | api (docs toggle)              | `development` (the docs are disabled in `production`)  |
-| `PORT`                  | api                            | `3000`                                                 |
-| `WEB_ORIGIN`            | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
-| `APP_URL`               | api (reset links)              | `http://localhost:5173`                                |
-| `MAIL_FROM`             | api (mail sender)              | `Auth Assessment <no-reply@localhost>`                 |
-| `SESSION_ABSOLUTE_TTL`  | api                            | `7d`                                                   |
-| `SESSION_IDLE_TTL`      | api                            | `1d`                                                   |
-| `SESSION_COOKIE_SECURE` | api (session cookie)           | `false` (default `true`; see the session notes)        |
-| `SMTP_URL`              | api (optional)                 | unset; logs mail in development                        |
-| `VITE_API_URL`          | web build; api (root builds)   | `http://localhost:3000`                                |
-
-## Sessions and password reset
-
-Auth uses `@nestjs/authentication` server-side sessions in an httpOnly cookie.
-There are no JWT or localStorage secrets.
-
-- The session is a server-side record in MongoDB (`auth_sessions`). The browser gets
-  only the session cookie. Production uses `__Host-sid` (HttpOnly, Secure,
-  SameSite=Lax, Path=/). Local Docker dev sets `SESSION_COOKIE_SECURE=false`, so the
-  cookie is `sid` without Secure, because Safari rejects Secure cookies over
-  `http://localhost` (Chrome and Firefox accept them). Never disable it in
-  production. Lifetimes come from `SESSION_ABSOLUTE_TTL` (default 7d) and
-  `SESSION_IDLE_TTL` (default 1d).
-- CSRF origin checks reject state-changing requests from untrusted origins (403);
-  CORS allows credentials only from `WEB_ORIGIN`; security headers (CSP, HSTS,
-  X-Frame-Options) are enabled.
-- Reset tokens are stored only as SHA-256 hashes (`auth_email_tokens`).
-
-Reset flow:
-
-1. Submit an email on `/forgot-password`. The API returns 202 whether or not the
-   account exists.
-2. In dev, the reset link is logged: `docker compose logs api | grep reset-password`
-   (set `SMTP_URL` to send real mail).
-3. Open the link and choose a new password.
-4. The API marks the token used, updates the password, marks the email verified,
-   signs the user in, and the app goes to `/app`.
-5. Reused, expired, or invalid links return 400 and the page offers a new link.
+Tests run against a separate `assessment_test` database. Both API Vitest configs set `MONGODB_URI` to `MONGODB_TEST_URI`, so tests never touch dev data. The `db` container pushes the schema to the test database when it starts. `pnpm test` runs 25 contract tests, 23 API unit tests, and 14 web tests (Vitest + Testing Library in jsdom: signup and forgot-password forms, the redirect search schema, and API error mapping) — 62 unit tests in total. The e2e command runs 37 tests across the auth, OpenAPI, store contract, and health suites. The API e2e suite covers signup/signin, sessions and `/users/me`, sign-out, password reset, CSRF, routing, and the OpenAPI document, and also runs the `@nestjs/authentication` store contract for sessions and email tokens, including its concurrency and cross-client persistence cases. GitHub Actions (`.github/workflows/ci.yml`) runs format check, lint, typecheck, build, unit tests, and the API e2e suite against a MongoDB replica set on every push to `main` and every pull request.
 
 ## Logging
 
@@ -188,7 +211,7 @@ The API writes JSON lines to stdout with Nest's built-in `ConsoleLogger`
 Example `HTTP` line:
 
 ```text
-{"level":"log","pid":1725,"timestamp":1794410926688,"message":"GET / 200","context":"HTTP","requestId":"319f6047-d668-4762-b634-bf7061fa02c3","method":"GET","path":"/","statusCode":200,"durationMs":10.8,"ip":"::ffff:172.20.0.1","userAgent":"curl/8.7.1","contentLength":12}
+{"level":"log","pid":1725,"timestamp":1794410926688,"message":"GET /health 200","context":"HTTP","requestId":"319f6047-d668-4762-b634-bf7061fa02c3","method":"GET","path":"/health","statusCode":200,"durationMs":10.8,"ip":"::ffff:172.20.0.1","userAgent":"curl/8.7.1","contentLength":15}
 ```
 
 Example `AuthAudit` line:
@@ -200,37 +223,24 @@ Example `AuthAudit` line:
 Read them with `docker compose logs api`, or
 `docker compose logs api --no-log-prefix | jq` when `jq` is installed.
 
-## API
+## Environment variables
 
-| Method | Path                    | Auth                      | Status                                                                           |
-| ------ | ----------------------- | ------------------------- | -------------------------------------------------------------------------------- |
-| `GET`  | `/`                     | none                      | Scaffold endpoint, returns `Hello World!`                                        |
-| `POST` | `/auth/signup`          | none                      | 201 `{ user }` + httpOnly session cookie; 400 invalid input, 409 duplicate email |
-| `POST` | `/auth/signin`          | none                      | 200 `{ user }` + session cookie; 401 bad credentials                             |
-| `POST` | `/auth/forgot-password` | none                      | 202 generic empty response for known and unknown emails; 400 invalid input       |
-| `POST` | `/auth/reset-password`  | none                      | 200 `{ user }` + session cookie (signed in); 400 invalid, expired, or used token |
-| `POST` | `/auth/sign-out`        | session cookie (optional) | 204; ends the current session and clears the cookie (204 even without a session) |
-| `GET`  | `/users/me`             | session cookie            | 200 with the public user; 401 without a valid session                            |
+Docker dev sets these in `compose.yaml`. The `.env.example` files in `apps/api` and `packages/db` show the values to use if you run something on the host instead.
 
-Errors use the contract's `ApiError`: `{ statusCode, message, error }`, where `message` is a string or, for validation errors, an array like `["email: Invalid email address"]`. Status codes: 400 validation, 401 bad credentials/no session, 403 untrusted origin, 409 duplicate email.
-
-The contract `User` includes `id`, `email`, `name`, `emailVerified`, and ISO
-`createdAt`/`updatedAt` timestamps. Passwords, hashes, session tokens, and reset
-tokens never appear in responses. The reset URL is logged in development; set `SMTP_URL` to send
-real mail.
-
-## API docs
-
-Swagger UI is at http://localhost:3000/docs and the OpenAPI JSON at
-http://localhost:3000/docs/json. The docs are served when `NODE_ENV` is not
-`production`.
-
-Request bodies and responses are generated from the `@repo/contract` Zod schemas (with
-`@Body({ schema })` and `standardSchema` response decorators); there are no DTO
-classes. To try a protected route, call `POST /auth/signin` (or `/auth/signup`) in the
-UI first: the browser stores the httpOnly session cookie (`sid` in Docker dev,
-`__Host-sid` over HTTPS), and "Try it out" on
-`GET /users/me` then works.
+| Variable                | Used by                        | Docker dev value                                       |
+| ----------------------- | ------------------------------ | ------------------------------------------------------ |
+| `MONGODB_URI`           | api, db                        | `mongodb://mongo:27017/assessment?replicaSet=rs0`      |
+| `MONGODB_TEST_URI`      | api, db (tests)                | `mongodb://mongo:27017/assessment_test?replicaSet=rs0` |
+| `NODE_ENV`              | api (docs toggle)              | `development` (the docs are disabled in `production`)  |
+| `PORT`                  | api                            | `3000`                                                 |
+| `WEB_ORIGIN`            | api (CORS/CSRF trusted origin) | `http://localhost:5173`                                |
+| `APP_URL`               | api (reset links)              | `http://localhost:5173`                                |
+| `MAIL_FROM`             | api (mail sender)              | `Auth Assessment <no-reply@localhost>`                 |
+| `SESSION_ABSOLUTE_TTL`  | api                            | `7d`                                                   |
+| `SESSION_IDLE_TTL`      | api                            | `1d`                                                   |
+| `SESSION_COOKIE_SECURE` | api (session cookie)           | `false` (default `true`; see the session notes)        |
+| `SMTP_URL`              | api (optional)                 | unset; logs mail in development                        |
+| `VITE_API_URL`          | web build; api (root builds)   | `http://localhost:3000`                                |
 
 ## Deploying
 

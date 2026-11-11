@@ -389,6 +389,39 @@ The initial plan was recorded on 2026-11-11 with these decisions:
   `plans/auth/changes.md`.
 - **Status:** implemented.
 
+### 2026-11-11 — Submission-review polish
+
+- **Requested by:** Developer
+- **Request:** "implement the polish group"
+- **Change:** Closed the remaining submission-review items:
+  - contract max lengths (email ≤ 254, name ≤ 100, password ≤ 128) with messages and
+    tests;
+  - replaced the scaffold `GET /`/`AppService` with a public `GET /health` that pings
+    MongoDB (200 `{ "status": "ok" }`, 503 on failure) and removed the scaffold tests;
+  - `defaultErrorComponent` (`ErrorScreen`) on the router for API outages and 5xx
+    responses;
+  - `aria-invalid` on the password fields when they show an error;
+  - TanStack Router `autoCodeSplitting`, which splits the web build into 15 chunks
+    (434 kB main) instead of one 604 kB chunk;
+  - the first web tests (Vitest + Testing Library + jsdom, 14 tests in 4 files) with a
+    router harness.
+- **Why:** Close the remaining review items: input bounds, production polish, and the
+  first frontend tests for the testing bonus.
+- **Impact:** New web dev dependencies (`vitest`, `jsdom`, `@testing-library/react`,
+  `@testing-library/user-event`, `@testing-library/dom`) and web test scripts;
+  `pnpm test` now includes the web app (25 contract + 23 API + 14 web = 62);
+  the scaffold endpoint and `AppService` are gone.
+- **Files:** `packages/contract/src/auth.ts` (+ spec), `apps/api/src/health/*`,
+  `apps/api/src/app.module.ts`, `apps/api/src/{app.controller,app.service}*`
+  (removed), `apps/api/test/{app,health,openapi}.e2e-spec.ts`,
+  `apps/web/vite.config.ts`, `apps/web/vitest.config.ts`, `apps/web/package.json`,
+  `apps/web/tsconfig.node.json`, `apps/web/src/router.tsx`,
+  `apps/web/src/modules/core/components/error-screen.tsx`,
+  `apps/web/src/modules/auth/pages/{signup,reset-password}.tsx`,
+  `apps/web/src/modules/**/*.test.{ts,tsx}`, `apps/web/src/test/*`,
+  `README.md`, `AGENTS.md`, `AI.md`, `plans/auth/{plan,tasks,changes}.md`.
+- **Status:** implemented.
+
 ## Entry template
 
 ```markdown
